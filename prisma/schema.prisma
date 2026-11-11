@@ -1,0 +1,165 @@
+// Prisma schema for the business-card domain.
+// Mirrors the data model fixed in tz-detail.md §5: five models, one enum, no extra fields.
+// The same schema is used by the NestJS data layer and by the idempotent seed (prisma/seed/main.ts).
+
+generator client {
+  provider = "prisma-client-js"
+  // "native" is used for local development; "linux-musl-openssl-3.0.x" is required by the alpine
+  // runtime image. Without the musl target the query engine cannot be loaded inside the container.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+// GraphQL object types are generated from the models below: the Prisma schema is the single
+// source of truth of the domain. Only the fields listed in `config/api-fields.yml` reach the
+// API, the rest is hidden with `@HideField()` (see
+// `prisma/generators/nestgraphql/nestgraphql.config.mts`). The output is committed, like
+// `src/schema.gql`.
+generator nestgraphql {
+  provider   = "prisma-nestjs-graphql"
+  output     = "../src/generated/graphql/entities"
+  configFile = "./generators/nestgraphql/nestgraphql.config.mts"
+}
+
+// JSON Schema of the API config (`config/api-fields.yml`): the config may name only models and
+// columns declared below, so a typo becomes a build error instead of a field that silently leaves
+// the API. Prisma passes the DMMF to the generator over its own protocol, so the datamodel stays
+// the single source of truth and the application never reads `Prisma.dmmf` at runtime.
+// The provider is a local Node script rather than a published package: `provider` is spawned as a
+// shell command from the project root. The artifact is committed into `config/`, where the build
+// step and the running application read it at the same relative path.
+generator apiFields {
+  provider = "node ./prisma/generators/api-fields/api-fields.generator.mts"
+  output   = "../config"
+}
+
+// GraphQL declarations of the API (`src/generated/graphql/resolvers/*.resolver.ts`): the nested
+// relations and the top-level queries. Both are facts of the schema plus `config/api-fields.yml`, so
+// they are generated instead of being written by hand; behaviour lives in `EntityLoader` and
+// `EntityQueries`. The artifacts are committed, like the generated entity classes.
+generator graphql {
+  provider = "node ./prisma/generators/graphql/graphql.generator.mts"
+  output   = "../src/generated/graphql/resolvers"
+}
+
+// JSON Schema of the seed data (`config/profile-data.schema.yml`): the import file has to describe
+// the rows these models declare, so the structure is generated from the DMMF. Only what Prisma
+// cannot express (`format: date`, URL patterns, the `version` envelope) comes from
+// `prisma/generators/seed-schema/seed-schema.config.mts`; no annotation DSL is added to this file.
+// The artifact is committed: the seed reads it at startup, in the image as well. A divergence is
+// caught by `tests/unit/generated/artifacts.parity.spec.ts`, which regenerates the file in a
+// disposable copy of the project and compares it byte for byte with the committed one.
+generator seedSchema {
+  provider = "node ./prisma/generators/seed-schema/seed-schema.generator.mts"
+  output   = "../config"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Every model carries a `type` column: it is the discriminant of a row, `{ id, type }`
+// (`src/common/contracts/entity.ts`). The values are spelled exactly as the Prisma client names its
+// delegates (`profile`, `socialLink`, …), so a table has one name in the schema, in the client and
+// in the code that selects it. Two properties of the column are deliberate:
+// - `String`, not a Prisma `enum`: an enum is emitted into `schemaEnums`, the GraphQL generator
+//   picks it up through `emitBlocks: ['models']` and the new enum would appear in `src/schema.gql`;
+// - `@default` is mandatory: the seed builds rows from the JSON Schema `data/profile.yml`, which
+//   knows nothing about this column, so the database has to fill it.
+
+/// Business-card owner with nested collections.
+model Profile {
+  id          String   @id @default(uuid())
+  type        String   @default("profile")
+  /// Kebab-case latin key of the idempotent profile upsert.
+  slug        String   @unique
+  name        String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  links       SocialLink[]
+  skills      Skill[]
+  experience  Experience[]
+  projects    Project[]
+}
+
+enum SocialKind {
+  GITHUB
+  LINKEDIN
+  WEBSITE
+  OTHER
+}
+
+/// External link of the profile owner: one item of `profile.links`.
+model SocialLink {
+  id        String     @id @default(uuid())
+  type      String     @default("socialLink")
+  profileId String
+  label     String
+  url       String
+  /// Kind of the link: one of the `SocialKind` values.
+  kind      SocialKind
+  profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  // Narrowing by `profileId` plus the first keys of the read order (`kind`, `label`). The order has
+  // no column of its own: it follows from the values, and the database sorts the tail (`id`).
+  @@index([profileId, kind, label])
+}
+
+/// Skill of the profile owner.
+model Skill {
+  id        String  @id @default(uuid())
+  type      String  @default("skill")
+  profileId String
+  name      String
+  /// Free-form grouping: "language", "backend", "database", …
+  category  String?
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, name])
+  // Narrowing by `profileId` plus the first keys of the read order (`category`, `name`). An empty
+  // category sorts last by an explicit rule of the read, not by a database default; the tail (`id`)
+  // is sorted by the database.
+  @@index([profileId, category, name])
+}
+
+/// Employment record of the profile owner.
+model Experience {
+  id           String    @id @default(uuid())
+  type         String    @default("experience")
+  profileId    String
+  company      String
+  position     String
+  /// Calendar date `YYYY-MM-DD`. A period of employment has neither a time of day nor a time zone.
+  startedAt    DateTime
+  /// Calendar date `YYYY-MM-DD`, or `null` while the job is current. The pair `finished`/`endedAt`
+  /// is checked by the seed when it writes a row; a read validates nothing and returns the row as is.
+  endedAt      DateTime?
+  /// Whether the employment is over. `false` marks a current job, and then `endedAt` is empty; an
+  /// owner may hold several jobs at once, so this is a fact about the row, not about a missing date.
+  /// `NOT NULL DEFAULT false`, so rows written before the flag existed read as `false`.
+  finished     Boolean   @default(false)
+  achievements String[]
+  profile      Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  // Narrowing by `profileId` plus the first key of the read order (`startedAt`, the latest job
+  // first). The order has no column of its own: it follows from the date, and the database sorts the
+  // tail (`id`). `finished` keeps its own index for the filter by the flag.
+  @@index([profileId, startedAt])
+  @@index([finished])
+}
+
+/// Project of the profile owner. The link and the description are optional.
+model Project {
+  id          String  @id @default(uuid())
+  type        String  @default("project")
+  profileId   String
+  name        String
+  url         String?
+  description String?
+  profile     Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  // Narrowing by `profileId` plus the first key of the read order (`name`). The order has no column
+  // of its own: it follows from the name, and the database sorts the tail (`id`).
+  @@index([profileId, name])
+}

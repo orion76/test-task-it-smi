@@ -1,0 +1,334 @@
+# it-smi-global: общий план реализации (roadmap)
+task: it-smi-global
+version: 1
+note: |
+  Сквозной план по tz-detail.md. Это roadmap, а не todo одной задачи: каждая группа — кандидат
+  в отдельную задачу .opencode/tasks/<task-id>/, которую создаёт planner (профиль full или normal).
+  Порядок групп — обязательная последовательность. Инфраструктура (д) идёт ДО данных (б): миграции
+  и сидинг требуют живой PostgreSQL, поэтому Docker и БД поднимаются первыми.
+  Тесты и проверки (е) заблокированы до готовности инфраструктуры и шаблонов.
+groups:
+  - id: и
+    title: "Исходные данные визитки"
+    status: in-progress
+    note: |
+      Группа стоит первой, потому что это вход для сидинга (б3) и самый дешёвый шаг.
+      Буква `и` — следующий свободный id; порядок вывода задаётся порядком в этом списке,
+      а не алфавитом, поэтому существующие id (а…з) не переименовываются.
+  - id: а
+    title: "Фундамент и каркас"
+    status: done
+  - id: д
+    title: "Инфраструктура — Docker и PostgreSQL"
+    status: done
+    note: |
+      Идёт до группы б: prisma migrate deploy и seed требуют живой PostgreSQL.
+      Сюда же входит первый шаблон запуска с нуля (Dockerfile, compose, entrypoint).
+  - id: б
+    title: "Данные — Prisma и PostgreSQL"
+    status: done
+  - id: в
+    title: "GraphQL-слой"
+    status: done
+  - id: г
+    title: "Вложенные запросы без N+1"
+    status: done
+  - id: е
+    title: "Тесты и качество кода"
+    status: in-progress
+    note: |
+      Разблокирована: инфраструктура (д) и шаблоны готовы, покрыт пакет yaml-loader (20 тестов,
+      задача config-root-resolver). Работа ведётся в задаче tests-and-quality.
+  - id: ж
+    title: "Документация"
+    status: deferred
+    note: |
+      Отложена: README написан преждевременно, до рефакторинга и оптимизации.
+      Переписывается после того, как код стабилизируется.
+  - id: з
+    title: "Деплой и сдача"
+    status: todo
+items:
+  - id: и1
+    group: и
+    text: "Написать data/profile.yml с исходными данными и валидацией формата"
+    status: done
+    actions:
+      - "Зафиксировать схему: version, profile (slug, name, description), links, skills, experience, projects"
+      - "Порядок элементов массива = порядок вывода; order в БД проставляет загрузчик, не YAML"
+      - "Контент — демо-данные на example.com, валидные по config/profile-data.schema.yml; реальные данные ставит автор (и2)"
+      - "COPY data ./data в runtime-стадии Dockerfile, иначе в контейнере данных нет"
+    links:
+      - "tz-detail.md: разделы 8.1, 8.2"
+  - id: и2
+    group: и
+    text: "Заменить плейсхолдеры реальными данными профиля"
+    status: in-progress
+    note: |
+      Закрывается пунктом в1 задачи experience-finished-flag: содержимое взято из .local/source/
+      (резюме автора) и лежит в разделе «Содержимое data/profile.yml» её _task.md.
+      Решения: все четыре места работы завершены (finished true), HOS247 — США по подробной версии
+      резюме, проекты — три open-source, персональные контакты (телефон, email) не публикуются,
+      из ссылок только GitHub, LinkedIn и Telegram. Образование, локация и статус ИП в схеме полей
+      не имеют.
+    note: |
+      Отложено до получения данных от автора. Блокирует содержательную сдачу (з2), но не разработку:
+      до заполнения демо запускается на плейсхолдерах.
+    actions:
+      - "Имя, краткое описание, ссылки GitHub/LinkedIn"
+      - "Навыки с категориями, опыт с достижениями, проекты со ссылками"
+    links:
+      - "tz-detail.md: разделы 8.1, 17"
+  - id: а1
+    group: а
+    text: "Развернуть каркас NestJS и тулинг (tsconfig strict, ESLint, скрипты)"
+    status: done
+    actions:
+      - "Установить @nestjs/cli, core, common, platform-express, reflect-metadata, rxjs"
+      - "tsconfig strict true, target ES2023, декораторы включены"
+      - "ESLint (с форматированием через @stylistic) + скрипты lint, lint:fix, typecheck, build"
+      - "Исправить main в package.json на dist/main.js, type оставить commonjs"
+    links:
+      - "tz-detail.md: разделы 3, 12"
+  - id: а2
+    group: а
+    text: "Конфигурация окружения с fail-fast валидацией и .env.example"
+    status: done
+    actions:
+      - "@nestjs/config + схема валидации DATABASE_URL, PORT, NODE_ENV"
+      - ".env.example в git, .env остаётся в .gitignore"
+      - "Понятная ошибка при отсутствии DATABASE_URL"
+    links:
+      - "tz-detail.md: раздел 10"
+  - id: а3
+    group: а
+    text: "Зафиксировать структуру модулей и границы слоёв (resolver → порт ← repository)"
+    status: done
+    actions:
+      - "Каталоги common/{config,contracts}, db/{prisma} и graphql/{profile,loaders,rules}"
+      - "Правило: prisma.* вызывается только из repository, слои общаются через порт"
+      - "README-фрагмент со схемой слоёв"
+    links:
+      - "tz-detail.md: раздел 4"
+  - id: д1
+    group: д
+    text: "Multi-stage Dockerfile с prisma generate, openssl и non-root пользователем"
+    status: done
+    actions:
+      - "Стадии deps (npm ci), build (prisma generate + nest build), runtime"
+      - "Только prod-зависимости в runtime, пользователь node"
+      - "COPY data ./data — без этого в контейнере нет исходных данных для сидинга"
+      - ".dockerignore с node_modules, dist, .git, .history, .env"
+    links:
+      - "tz-detail.md: раздел 9"
+  - id: д2
+    group: д
+    text: "docker-compose с app и postgres, healthcheck и томом данных"
+    status: done
+    actions:
+      - "postgres:17-alpine, healthcheck pg_isready, volume pgdata"
+      - "depends_on condition service_healthy, порт 3000:3000"
+      - "DATABASE_URL через environment"
+    links:
+      - "tz-detail.md: раздел 9"
+  - id: д3
+    group: д
+    text: "Entrypoint: запуск приложения и проверка запуска с нуля"
+    status: done
+    actions:
+      - "exec node dist/main.js как PID 1, корректная обработка сигналов"
+      - "Проверка на чистом томе и повторный up без пересборки"
+      - "Шаги migrate deploy и seed добавляются в задаче про данные (б4), не здесь"
+    links:
+      - "tz-detail.md: раздел 9"
+  - id: б1
+    group: б
+    text: "Подключить Prisma к PostgreSQL и закоммитить первую миграцию"
+    status: done
+    actions:
+      - "prisma init, datasource postgresql, binaryTargets native + linux-musl-openssl-3.0.x"
+      - "npm-скрипты prisma:generate, migrate:dev, migrate:deploy, seed"
+      - "Миграция init в prisma/migrations/"
+    links:
+      - "tz-detail.md: разделы 5, 8"
+  - id: б2
+    group: б
+    text: "Описать схему данных Profile, SocialLink, Skill, Experience, Project"
+    status: done
+    actions:
+      - "Уникальные ключи для идемпотентного сидинга (Profile.slug, Skill [profileId,name])"
+      - "order Int для детерминированного вывода, индексы по profileId"
+      - "onDelete Cascade на всех связях, achievements как String[]"
+    links:
+      - "tz-detail.md: раздел 5"
+  - id: б3
+    group: б
+    text: "Написать идемпотентный seed, читающий data/profile.yml"
+    status: done
+    actions:
+      - "Загрузчик: прочитать YAML → провалидировать DTO → разложить в upsert, без бизнес-логики в seed"
+      - "upsert по slug и естественным ключам, повторный запуск не даёт дублей"
+      - "DTO на class-validator: ошибка вида data/profile.yml: experience[0].company — TODO не заменён"
+      - "Битый файл роняет контейнер с указанием пути до поля, а не отдаёт пустой профиль"
+      - "Сборка в dist/prisma/seed/main.js, запуск без ts-node в runtime-образе"
+    links:
+      - "tz-detail.md: разделы 8, 8.1"
+  - id: б4
+    group: б
+    text: "Встроить prisma migrate deploy и seed в entrypoint контейнера"
+    status: done
+    actions:
+      - "Только migrate deploy, не migrate dev — migrate dev требует shadow DB и интерактивности"
+      - "Порядок: migrate deploy → seed → exec node dist/main.js"
+      - "Проверка: чистое дерево и чистый том дают рабочее приложение с данными"
+      - "Повторный docker compose up не дублирует данные и не падает"
+    links:
+      - "tz-detail.md: разделы 8, 9"
+  - id: в1
+    group: в
+    text: "PrismaModule и PrismaService с корректным lifecycle"
+    status: done
+    actions:
+      - "Global-модуль, onModuleInit → $connect, enableShutdownHooks"
+      - "Экспорт сервиса только для repository-слоя"
+    links:
+      - "tz-detail.md: раздел 4"
+  - id: в2
+    group: в
+    text: "GraphQLModule на Apollo driver, code-first, Sandbox и introspection включены"
+    status: done
+    actions:
+      - "autoSchemaFile, sortSchema, ApolloDriverConfig"
+      - "Явно introspection true и playground true — иначе на проде Sandbox пустой"
+      - "Эндпоинт POST/GET /graphql"
+    links:
+      - "tz-detail.md: разделы 6, 16"
+  - id: в3
+    group: в
+    text: "Реализовать Query.profile, Query.profiles, Query.health"
+    status: done
+    actions:
+      - "profile — единственный профиль или NotFoundError с внятным сообщением"
+      - "profiles — список, нужен для демонстрации батчинга"
+      - "health — для docker healthcheck и деплоя"
+    links:
+      - "tz-detail.md: раздел 6"
+  - id: в4
+    group: в
+    text: "Валидация входных данных и единый формат GraphQL-ошибок"
+    status: done
+    actions:
+      - "class-validator на аргументах, ValidationPipe"
+      - "Фильтр ошибок без утечки stack trace в ответ"
+    links:
+      - "tz-detail.md: раздел 6"
+  - id: г1
+    group: г
+    text: "Сделать request-scoped DataLoader для skills, experience, projects, links"
+    status: done
+    actions:
+      - "Batch-функция findMany({ where: { profileId: { in: ids } } }) + группировка в Map"
+      - "Scope.REQUEST, чтобы кэш не утекал между запросами"
+      - "Обработка отсутствующих id без падения"
+    links:
+      - "tz-detail.md: раздел 7"
+  - id: г2
+    group: г
+    text: "Подключить лоадеры в @ResolveField и обеспечить детерминированный порядок"
+    status: done
+    actions:
+      - "Вложенные поля Profile берут данные только из лоадера"
+      - "orderBy [{ order: asc }, { id: asc }] внутри batch-функции"
+    links:
+      - "tz-detail.md: разделы 6, 7"
+  - id: г3
+    group: г
+    text: "Доказать отсутствие N+1 подсчётом вызовов порта EntityQueryPort в e2e-тесте"
+    status: done
+    actions:
+      - "e2e-тест подменяет провайдер EntityQueryPort шпионом и считает его вызовы"
+      - "Тот же способ проверки — задача tests-and-quality, пункт б3"
+      - "Число выборок на тип одинаково при 1 и при 3 профилях"
+      - "Полный вложенный запрос укладывается в 5 выборок"
+      - "Production-код для замера не нужен: считаются вызовы порта"
+    links:
+      - "tz-detail.md: раздел 7"
+      - "src/common/contracts/entity-query.port.ts:72 — порт, по вызовам которого считается батчинг"
+  - id: е1
+    group: е
+    text: "Юнит-тесты репозитория и batch-функции лоадера"
+    status: todo
+    actions:
+      - "Мок-репозитории, без обращения к БД"
+      - "Тест группировки по profileId и поведения при пустом результате"
+    links:
+      - "tz-detail.md: раздел 11"
+  - id: е2
+    group: е
+    text: "e2e-тесты на реальной БД, включая точный запрос из TZ.md"
+    status: todo
+    actions:
+      - "Supertest против поднятого Nest-приложения"
+      - "Запрос из TZ.md строки 36-51 выполняется без ошибок"
+      - "Проверка порядка вывода и вложенности"
+    links:
+      - "tz-detail.md: разделы 6, 11"
+  - id: е3
+    group: е
+    text: "Прогнать lint → typecheck → test → test:e2e → build до зелёного"
+    status: todo
+    actions:
+      - "Зафиксировать порядок в package.json scripts и README"
+      - "Устранить предупреждения, а не подавлять их disable-комментариями"
+    links:
+      - "tz-detail.md: раздел 12"
+  - id: ж1
+    group: ж
+    text: "README с обоснованием архитектуры и компромиссов"
+    status: deferred
+    actions:
+      - "README на русском; английский — только в коде (идентификаторы, комментарии, JSDoc)"
+      - "Слои и границы, code-first, DataLoader вместо include, выбор PostgreSQL"
+      - "Почему данные в data/profile.yml, раздел «что сделал бы дальше»"
+      - "Ссылки на файлы вида path:line"
+    links:
+      - "tz-detail.md: раздел 13"
+  - id: ж2
+    group: ж
+    text: "README с инструкцией запуска, env и примерами GraphQL"
+    status: deferred
+    actions:
+      - "docker compose up --build как основной путь, локальный запуск как альтернатива"
+      - "Пример запроса из ТЗ и пример с вложенными полями"
+      - "Указание, как запускать e2e и какой DATABASE_URL нужен"
+      - "Как заполнить data/profile.yml своим содержимым, с примером"
+    links:
+      - "tz-detail.md: разделы 8.1, 11, 13"
+  - id: з1
+    group: з
+    text: "Задеплоить на Render или Railway (Docker + managed PostgreSQL)"
+    status: todo
+    actions:
+      - "Миграции и сидинг на старте контейнера, не вручную"
+      - "Проверить, что introspection и Sandbox доступны при NODE_ENV=production"
+    links:
+      - "tz-detail.md: разделы 14, 16"
+  - id: з2
+    group: з
+    text: "Smoke-проверка публичного URL запросом из ТЗ"
+    status: todo
+    actions:
+      - "Sandbox открывается, запрос profile с вложенными полями отдаёт данные"
+      - "Health-эндпоинт отвечает"
+    links:
+      - "tz-detail.md: раздел 15"
+  - id: з3
+    group: з
+    text: "Финальная вычитка репозитория перед сдачей"
+    status: todo
+    actions:
+      - "В git нет .env, node_modules, dist, .history"
+      - "История коммитов осмысленная, README актуален"
+      - "Ссылки на репозиторий и деплой добавлены в README"
+    links:
+      - "tz-detail.md: раздел 15"

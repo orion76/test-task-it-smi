@@ -1,0 +1,24 @@
+{
+  // Отдельный проект для инструментов `prisma/` на `.mts`: генераторы, их конфиги и хуки запускает
+  // обычный `node` (стирание типов встроено в Node 24), поэтому проект только проверяет типы —
+  // `noEmit` и `allowImportingTsExtensions` разрешают импорт по фактическому `.mts`-расширению.
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "rootDir": "./prisma",
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    // `.mts` исполняется стиранием типов: `enum`, `namespace`, parameter properties и декораторы
+    // в рантайме не существуют, поэтому нарушение должно быть ошибкой компиляции.
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["prisma/**/*.mts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,141 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+"""Employment record of the profile owner."""
+type Experience {
+  """Достижения"""
+  achievements: [String!]!
+
+  """Компания"""
+  company: String!
+
+  """Дата окончания; null — работаю по сей день"""
+  endedAt: DateTime
+
+  """Признак завершённого места работы; false — работаю по сей день"""
+  finished: Boolean!
+
+  """Идентификатор"""
+  id: ID!
+
+  """Должность"""
+  position: String!
+
+  """Владелец визитки, которому принадлежит место работы"""
+  profile: Profile!
+
+  """Дата начала работы"""
+  startedAt: DateTime!
+}
+
+"""Application health status."""
+type Health {
+  status: String!
+}
+
+"""Business-card owner with nested collections."""
+type Profile {
+  """Краткое описание — специализация, стек, чем полезен"""
+  description: String!
+
+  """Места работы владельца визитки"""
+  experience: [Experience!]!
+
+  """Идентификатор"""
+  id: ID!
+
+  """Ссылки владельца визитки"""
+  links: [SocialLink!]!
+
+  """Имя"""
+  name: String!
+
+  """Проекты владельца визитки"""
+  projects: [Project!]!
+
+  """Навыки владельца визитки"""
+  skills: [Skill!]!
+}
+
+"""
+Project of the profile owner. The link and the description are optional.
+"""
+type Project {
+  """Описание проекта; null — не указано"""
+  description: String
+
+  """Идентификатор"""
+  id: ID!
+
+  """Название проекта"""
+  name: String!
+
+  """Владелец визитки, которому принадлежит проект"""
+  profile: Profile!
+
+  """Адрес проекта; null — не указан"""
+  url: String
+}
+
+type Query {
+  """Application health status."""
+  health: Health!
+
+  """The business-card profile."""
+  profile: Profile!
+
+  """One page of business-card profiles."""
+  profiles(
+    """Maximum number of rows to return (1-100)."""
+    limit: Int! = 10
+
+    """Number of rows to skip, for paging through the list."""
+    offset: Int! = 0
+  ): [Profile!]!
+}
+
+"""Skill of the profile owner."""
+type Skill {
+  """Категория навыка; null — не указана"""
+  category: String
+
+  """Идентификатор"""
+  id: ID!
+
+  """Название навыка"""
+  name: String!
+
+  """Владелец визитки, которому принадлежит навык"""
+  profile: Profile!
+}
+
+enum SocialKind {
+  GITHUB
+  LINKEDIN
+  OTHER
+  WEBSITE
+}
+
+"""External link of the profile owner: one item of `profile.links`."""
+type SocialLink {
+  """Идентификатор"""
+  id: ID!
+
+  """Тип ссылки — GITHUB, LINKEDIN, WEBSITE или OTHER"""
+  kind: SocialKind!
+
+  """Подпись ссылки"""
+  label: String!
+
+  """Владелец визитки, которому принадлежит ссылка"""
+  profile: Profile!
+
+  """Адрес ссылки"""
+  url: String!
+}

@@ -1,0 +1,75 @@
+    <section class="panel">
+      <h2 class="panel__title">Операция</h2>
+
+      <div class="presets">
+        @for (preset of presets; track preset.name) {
+          <button
+            type="button"
+            class="preset"
+            [class.preset--active]="preset.name === operation()"
+            [disabled]="busy()"
+            (click)="operation.set(preset.name)"
+          >
+            {{ preset.label }}
+          </button>
+        }
+      </div>
+
+      <p class="hint">{{ hint() }}</p>
+
+      @if (operation() === 'profiles') {
+        <div class="page-params">
+          <label class="field">
+            <span>limit</span>
+            <input
+              type="text"
+              inputmode="numeric"
+              [ngModel]="limit()"
+              (ngModelChange)="limit.set($event)"
+              [disabled]="busy()"
+            />
+          </label>
+          <label class="field">
+            <span>offset</span>
+            <input
+              type="text"
+              inputmode="numeric"
+              [ngModel]="offset()"
+              (ngModelChange)="offset.set($event)"
+              [disabled]="busy()"
+            />
+          </label>
+          <p class="hint">limit — от 1 до 100, offset — сдвиг страницы.</p>
+        </div>
+      }
+
+      @if (operation() === 'custom') {
+        <div class="custom-request">
+          <label class="field field--wide">
+            <span>Документ GraphQL</span>
+            <textarea
+              rows="16"
+              spellcheck="false"
+              [ngModel]="documentSource()"
+              (ngModelChange)="documentSource.set($event)"
+              [disabled]="busy()"
+            ></textarea>
+          </label>
+          <label class="field field--wide">
+            <span>Переменные (JSON)</span>
+            <textarea
+              rows="6"
+              spellcheck="false"
+              [ngModel]="variablesSource()"
+              (ngModelChange)="variablesSource.set($event)"
+              [disabled]="busy()"
+            ></textarea>
+          </label>
+        </div>
+      }
+
+      <button type="button" class="run" [disabled]="busy()" (click)="submit()">
+        {{ busy() ? 'Выполняется…' : 'Выполнить запрос' }}
+      </button>
+    </section>
+ 

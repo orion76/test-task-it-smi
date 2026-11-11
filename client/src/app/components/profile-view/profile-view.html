@@ -1,0 +1,62 @@
+    @if (cards().length > 0) {
+      <section class="panel">
+        <h2 class="panel__title">Профиль</h2>
+        @for (card of cards(); track card.profile.id) {
+          <article class="profile">
+            <h3 class="profile__name">{{ card.profile.name }}</h3>
+            <p class="profile__description">{{ card.profile.description }}</p>
+
+            <h4>Ссылки</h4>
+            <ul class="profile__list">
+              @for (link of card.profile.links; track link.id) {
+                <li>
+                  <span class="tag">{{ link.kind }}</span>
+                  <span>{{ link.label }}</span>
+                  <a [href]="link.url" target="_blank" rel="noreferrer">{{ link.url }}</a>
+                </li>
+              }
+            </ul>
+
+            <h4>Навыки</h4>
+            <ul class="profile__list">
+              @for (group of card.skillGroups; track group.category) {
+                <li>
+                  <span class="tag">{{ group.category }}</span>
+                  <span>{{ group.names.join(', ') }}</span>
+                </li>
+              }
+            </ul>
+
+            <h4>Опыт</h4>
+            <ul class="profile__list">
+              @for (item of card.profile.experience; track item.id) {
+                <li>
+                  <p class="profile__position">{{ item.position }}, {{ item.company }}</p>
+                  <p class="profile__period">{{ formatPeriod(item) }}</p>
+                  <ul class="profile__achievements">
+                    @for (achievement of item.achievements; track $index) {
+                      <li>{{ achievement }}</li>
+                    }
+                  </ul>
+                </li>
+              }
+            </ul>
+
+            <h4>Проекты</h4>
+            <ul class="profile__list">
+              @for (project of card.profile.projects; track project.id) {
+                <li>
+                  <span>{{ project.name }}</span>
+                  @if (project.url !== null) {
+                    <a [href]="project.url" target="_blank" rel="noreferrer">{{ project.url }}</a>
+                  }
+                  @if (project.description !== null) {
+                    <p class="profile__project-description">{{ project.description }}</p>
+                  }
+                </li>
+              }
+            </ul>
+          </article>
+        }
+      </section>
+    }

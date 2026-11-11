@@ -1,0 +1,100 @@
+# Dockhost project description: one application image built from the repository, the database on a
+# network volume and the single route of a dynamic domain.
+#
+# The Nest process serves both the GraphQL API and the built Angular page: the client is compiled
+# into the application image, so the project has one repository, one pipeline and one public route.
+# `docker-compose.yml` is used for local runs only and is not read by the platform.
+#
+# Apply with `dockhost compose apply`: it creates the missing resources and updates the existing
+# ones. The file holds no literal secrets: the database password and the connection string are
+# project variables referenced as `$NAME` / `${NAME}`.
+#
+# Project variables to set before the first apply (`dockhost environment variable set`); their
+# values are not part of this file:
+#   POSTGRES_USER, POSTGRES_DB  — not secret, declared in `environment.variables` below;
+#   POSTGRES_PASSWORD           — database password, panel or CLI only;
+#   DATABASE_URL                — connection string, panel or CLI only.
+#
+# The repository is public, so `repositories` carry no credentials: the platform clones it over
+# HTTPS anonymously. Add `username`/`password` here only if the repository becomes private.
+#
+# The `app` container is intentionally absent from `containers`: the pipeline creates it from
+# `repositories` under the same name, and its runtime variables (`DATABASE_URL`,
+# `NODE_ENV=production`, `PORT=3000`) are set on that container in the panel. Declaring it here
+# would let `compose apply` overwrite what the build manages.
+#
+# Container names must be at least three characters long: a two-character name is rejected by the
+# platform with `Invalid params`, which is why the database is `postgres` and not `db`.
+
+version: 1
+
+# Project name in the Dockhost panel. `compose apply` looks the project up by this field, so a
+# mismatch either creates resources elsewhere or fails.
+project: my-project
+
+# Project-wide variables: non-secret values the containers read.
+environment:
+  variables:
+    POSTGRES_USER: it_smi
+    POSTGRES_DB: it_smi
+
+# Image source of the application. The root `Dockerfile` builds the backend and the Angular client
+# in one image, so the context is the repository root.
+repositories:
+  app:
+    url: https://gitverse.ru/gpb/test-task-it-smi.git
+    branch: deploy
+    dockerFile: Dockerfile
+    dockerContext: .
+    # A build needs noticeably more memory than the runtime: `npm ci` plus `nest build` plus
+    # `ng build`. The container memory is lowered in the panel after the first successful deploy.
+    memory: 1024MiB
+
+# PostgreSQL data: without a volume the database is lost on container restart.
+volumes:
+  db-data:
+    type: ssd
+    # 1Gi is the smallest volume the platform offers.
+    size: 1Gi
+
+containers:
+  # The name must be at least three characters (see the header): `db` is rejected by the platform.
+  postgres:
+    # An exact version instead of a floating `17-alpine`: a restart must not pull an incompatible
+    # major version. The tag is verified in Docker Hub.
+    image: postgres:17.11-alpine
+    resources:
+      memory: 256Mi
+    # The port is open inside the project only: the database is not published externally, the
+    # application reaches it at `postgres:5432`.
+    ports:
+      - 5432/TCP
+    variables:
+      # `$NAME` references a project variable; the password is set in the panel or CLI only.
+      POSTGRES_USER: $POSTGRES_USER
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      POSTGRES_DB: $POSTGRES_DB
+    volumes:
+      - name: db-data
+        mountPath: /var/lib/postgresql/data
+
+network:
+  # Dynamic platform domain with HTTPS: no custom domain or certificate is needed.
+  domains:
+    main: ~
+
+  services:
+    app:
+      container: app
+      ports:
+        - 3000
+
+  # One route for both the page and the API: `/graphql`, `/health` and the static files are served
+  # by the same Nest process, and the client requests the relative `/graphql`, so CORS is not
+  # needed. The order of routes no longer affects the reachability of the API.
+  routes:
+    web:
+      domain: main
+      service: app
+      port: 3000
+      path: /

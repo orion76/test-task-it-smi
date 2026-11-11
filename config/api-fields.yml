@@ -1,0 +1,167 @@
+# config/api-fields.yml — единственное описание API: какие запросы и поля публичны и что они значат.
+#
+# Структуру данных описывает prisma/schema.prisma, и она остаётся источником истины о колонках.
+# Этот файл дополняет её только тем, чего в схеме нет: подмножеством полей, попадающих в GraphQL,
+# русскими описаниями для документации (Apollo Sandbox), видом связей между моделями, порядком
+# чтения коллекций и списком запросов верхнего уровня.
+#
+# Правила:
+#   - модели, поля и запросы перечислены явно: чего нет в файле, того нет в API (инверсия по
+#     умолчанию);
+#   - `queries` — запросы верхнего уровня: имя запроса становится полем GraphQL, `entity` выбирает
+#     таблицу, `kind` — форму ответа (`one` или `page`);
+#   - `properties` — скалярные поля строки: они попадают в GraphQL-тип как есть, описание становится
+#     документацией поля;
+#   - `references` — поля-связи. Здесь два имени: `entity` — тип сущности, с которой связана модель,
+#     и `property` — имя поля, в котором хранится идентификатор связанной сущности (`profileId`).
+#     Моё собственное поле остаётся скрытым (генератор GraphQL-типов его не публикует), потому что
+#     значение связи разрешает резолвер, а не сама строка;
+#   - `order` — порядок чтения строк модели: список записей ровно с одной колонкой, значение —
+#     `asc`/`desc` либо `{ sort, nulls }`. Порядок заканчивается `id`, иначе равные ключи менялись
+#     бы местами между двумя чтениями и группировка пакета «плыла»;
+#   - `entity` пишется так же, как делегат Prisma-клиента: `profile`, `socialLink`, `skill`,
+#     `experience`, `project`. Это то же имя, что приходит в колонке `type`;
+#   - смысл `null` описывается текстом: отдельного признака nullable в конфиге нет;
+#   - файл валидируется схемой config/api-fields.schema.yml, которую выпускает генератор
+#     prisma/generators/api-fields/api-fields.generator.mts из DMMF. Опечатка в имени модели или
+#     поля, неверный `entity`, не та колонка в `property`, неизвестная таблица в запросе или
+#     колонка в `order` — ошибка сборки (см. `npm run validate:api-fields`).
+#
+# Файл читают четверо: `prisma/generators/nestgraphql/nestgraphql.config.mts` (видимость и описания полей
+# GraphQL), AJV-валидатор `src/graphql/contract/api-fields.validator.ts` (контракт против схемы БД),
+# `prisma/generators/graphql/graphql.generator.mts` (объявления запросов и полей-связей) и
+# `src/common/config/api-fields.ts` (связи, по которым лоадеры читают вложенные строки, и порядок
+# чтения, по которому строки читает репозиторий).
+
+version: 1
+
+# Запросы верхнего уровня: имя запроса — имя поля GraphQL. `kind` выбирает форму ответа:
+# `one` — одна строка (404, если таблица пуста), `page` — страница со `limit`/`offset`.
+# Поведение обеих форм живёт в `EntityQueries`, поэтому здесь только объявление.
+queries:
+  profile:
+    description: The business-card profile.
+    entity: profile
+    kind: one
+  profiles:
+    description: One page of business-card profiles.
+    entity: profile
+    kind: page
+
+models:
+  Profile:
+    description: Владелец визитки
+    properties:
+      id:
+        description: Идентификатор
+      name:
+        description: Имя
+      description:
+        description: Краткое описание — специализация, стек, чем полезен
+    references:
+      links:
+        description: Ссылки владельца визитки
+        entity: socialLink
+        property: profileId
+      skills:
+        description: Навыки владельца визитки
+        entity: skill
+        property: profileId
+      experience:
+        description: Места работы владельца визитки
+        entity: experience
+        property: profileId
+      projects:
+        description: Проекты владельца визитки
+        entity: project
+        property: profileId
+    # Визитка, засеянная первой, читается первой: границы страниц не смещаются, пока добавляются
+    # строки.
+    order:
+      - createdAt: asc
+  SocialLink:
+    description: Внешняя ссылка владельца визитки
+    properties:
+      id:
+        description: Идентификатор
+      label:
+        description: Подпись ссылки
+      url:
+        description: Адрес ссылки
+      kind:
+        description: Тип ссылки — GITHUB, LINKEDIN, WEBSITE или OTHER
+    references:
+      profile:
+        description: Владелец визитки, которому принадлежит ссылка
+        entity: profile
+        property: profileId
+    order:
+      - kind: asc
+      - label: asc
+      - id: asc
+  Skill:
+    description: Навык владельца визитки
+    properties:
+      id:
+        description: Идентификатор
+      name:
+        description: Название навыка
+      category:
+        description: Категория навыка; null — не указана
+    references:
+      profile:
+        description: Владелец визитки, которому принадлежит навык
+        entity: profile
+        property: profileId
+    # Пустая категория — значение, а не «первая группа»: она идёт последней, и правило записано
+    # явно, а не полагается на поведение базы по умолчанию.
+    order:
+      - category:
+          sort: asc
+          nulls: last
+      - name: asc
+      - id: asc
+  Experience:
+    description: Место работы владельца визитки
+    properties:
+      id:
+        description: Идентификатор
+      company:
+        description: Компания
+      position:
+        description: Должность
+      startedAt:
+        description: Дата начала работы
+      endedAt:
+        description: Дата окончания; null — работаю по сей день
+      finished:
+        description: Признак завершённого места работы; false — работаю по сей день
+      achievements:
+        description: Достижения
+    references:
+      profile:
+        description: Владелец визитки, которому принадлежит место работы
+        entity: profile
+        property: profileId
+    order:
+      - startedAt: desc
+      - id: asc
+  Project:
+    description: Проект владельца визитки
+    properties:
+      id:
+        description: Идентификатор
+      name:
+        description: Название проекта
+      url:
+        description: Адрес проекта; null — не указан
+      description:
+        description: Описание проекта; null — не указано
+    references:
+      profile:
+        description: Владелец визитки, которому принадлежит проект
+        entity: profile
+        property: profileId
+    order:
+      - name: asc
+      - id: asc

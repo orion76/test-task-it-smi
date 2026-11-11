@@ -1,0 +1,74 @@
+{
+  // Knip: неиспользуемые файлы, зависимости и экспорты (https://knip.dev).
+  //
+  // Точки входа — то, что запускается снаружи, а не импортируется из кода:
+  //   - `prisma/seed/main.ts` — сидинг (`node dist/prisma/seed/main.js` в entrypoint контейнера);
+  //   - `prisma/generators/api-fields/api-fields.generator.mts` — генератор схемы контракта API;
+  //   - `prisma/generators/graphql/graphql.generator.mts` — генератор GraphQL-деклараций (запросы и
+  //     связи);
+  //   - `prisma/generators/seed-schema/seed-schema.generator.mts` — генератор JSON Schema импорта
+  //     `data/profile.yml`;
+  //   - `prisma/generators/nestgraphql/nestgraphql.config.mts` — конфиг генератора GraphQL-типов
+  //     (`configFile` в `schema.prisma`);
+  //   - `packages/yaml-loader/src/index.ts` — библиотека загрузки конфигов: пока её никто не
+  //     импортирует (внедрение — отдельная задача), поэтому без явной точки входа knip сочтёт
+  //     файл неиспользуемым. Исходники пакета лежат в `src/` внутри пакета, компилируемый `lib/` —
+  //     артефакт сборки, а не исходник;
+  //   - `tests/e2e/**/*.e2e-spec.ts` — e2e-спеки: плагин jest ищет `jest.config.*` и шаблон
+  //     `*.spec.ts`, а e2e-прогон идёт отдельным `jest-e2e.config.mjs` с именами `*.e2e-spec.ts`,
+  //     поэтому без явной точки входа knip считает неиспользуемыми и сами спеки, и их
+  //     dev-зависимости (`@nestjs/testing`, `supertest`, `@types/supertest`).
+  // Все перечисленные названы в `prisma/schema.prisma` как `provider`/`configFile`, но knip читает
+  // схему как данные, а не как код, поэтому они перечислены здесь явно.
+  // `src/main.ts` и `scripts/api-fields.cli.ts` находятся сами: они названы в
+  // `package.json` (main и scripts), поэтому дублировать их здесь не нужно.
+  //
+  // `project` задан явно: по умолчанию knip смотрит только `**/*.{js,ts,tsx}`, а в проекте есть
+  // `.mts` (генераторы, их конфиги и хуки `prisma/scripts`) и `.prisma` (схема, из которой читаются
+  // генераторы). `packages/**/*.ts` добавлен для библиотеки `packages/yaml-loader`: её исходники
+  // лежат в `packages/yaml-loader/src`, вне `src` приложения, и без этого шаблона она вообще не
+  // попала бы в проект knip. `tests/**/*.ts` — юнит-тесты из `tests/`: плагин jest уже считает их
+  // точками входа (по имени `*.spec.ts`), но без шаблона в `project` их импорты не разбирались бы,
+  // и лишняя зависимость в тесте осталась бы незамеченной. `scripts/**/*.ts` — шаги сборки из
+  // `scripts/`: они лежат вне `src` приложения, как и библиотека.
+  "$schema": "./node_modules/knip/schema.json",
+  "entry": [
+    "prisma/seed/main.ts",
+    "prisma/generators/api-fields/api-fields.generator.mts",
+    "prisma/generators/graphql/graphql.generator.mts",
+    "prisma/generators/seed-schema/seed-schema.generator.mts",
+    "prisma/generators/nestgraphql/nestgraphql.config.mts",
+    "packages/yaml-loader/src/index.ts",
+    "tests/e2e/**/*.e2e-spec.ts"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "prisma/**/*.{ts,mts,prisma}",
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  // Алиасы тестов: та же карта, что `compilerOptions.paths` в `tsconfig.spec.json` (там она —
+  // единственный источник). Копия нужна, потому что knip читает `paths` только из корневого
+  // `tsconfig.json`, а тесты собираются отдельным проектом `tsconfig.spec.json`; при изменении
+  // карты обе копии синхронизируются вручную.
+  "paths": {
+    "@src/*": ["./src/*"],
+    "@generators/*": ["./prisma/generators/*"],
+    "@seed/*": ["./prisma/seed/*"],
+    "@scripts/*": ["./prisma/scripts/*"],
+    "@lib": ["./packages/yaml-loader/src"],
+    "@lib/*": ["./packages/yaml-loader/src/*"]
+  },
+  // Артефакты `prisma generate`: не редактируются руками, их «неиспользуемые» экспорты — дело
+  // генератора, а не проекта. Всё дерево собрано под одним корнем `src/generated/`. Собранного
+  // `packages/yaml-loader/lib` здесь нет: каталог в репозитории не хранится (`.gitignore`), а
+  // собирает его `npm run build:lib`.
+  "ignore": [
+    "src/generated/**"
+  ],
+  // Провайдер генератора — локальный скрипт, а не пакет: knip разбирает его как зависимость.
+  "ignoreIssues": {
+    "prisma/schema.prisma": ["unlisted"],
+  },
+}

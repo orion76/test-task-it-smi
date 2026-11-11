@@ -1,0 +1,31 @@
+{
+  // Самостоятельный проект библиотеки `packages/yaml-loader`. `extends` корневого `tsconfig.json`
+  // нет намеренно: там проект приложения (декораторы, `outDir: ./dist`), к библиотеке отношения не
+  // имеющий, и наследование притащило бы в пакет чужие настройки.
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    // `rootDir` обязателен: без него корнем программы считается каталог пакета, и вывод уходит в
+    // `lib/src/`, тогда как `main` и `types` пакета указывают на `lib/index.js` и `lib/index.d.ts`.
+    "rootDir": "./src",
+    "outDir": "./lib",
+    // Объявления типов обязательны: `types` в `package.json` пакета указывает на `lib/index.d.ts`.
+    "declaration": true,
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    // `types` задан явно: TypeScript 6 не подхватывает пакеты `@types` неявно, а библиотека
+    // использует `node:fs` и `node:path`.
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "lib"]
+}

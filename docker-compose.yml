@@ -1,0 +1,59 @@
+# Оркестрация локального запуска: PostgreSQL, приложение и клиент ручной проверки API.
+# Все значения переопределяются переменными окружения или файлом .env,
+# литеральных секретов в файле нет.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-it_smi}
+    # Порт проброшен наружу: Prisma CLI вне контейнера подключается к localhost:5432.
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Приложение стартует только после того, как PostgreSQL готов принимать соединения.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-it_smi}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  app:
+    build: .
+    # init: true — tini как PID 1: пересылает SIGTERM дочернему Node.js и пожинает зомби.
+    # Без него `docker compose stop` дожидался таймаута и убивал контейнер по SIGKILL.
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Хост — имя сервиса `db` внутри сети compose, не localhost.
+      DATABASE_URL: 'postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-it_smi}?schema=public'
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - '3000:3000'
+    restart: unless-stopped
+
+  # Клиент ручной проверки API: Angular dev-сервер с интерфейсом, через который видно ответ, ошибки
+  # GraphQL/сети и длительность запроса. Страница обращается к своему origin, а `/graphql`
+  # и `/health` проксируются на сервис `app` (proxy.conf.docker.json), поэтому CORS не нужен.
+  client:
+    build:
+      context: ./client
+    # init: true — как у `app`: сигналы доходят до Node.js, зомби-процессы пожинаются.
+    init: true
+    depends_on:
+      - app
+    ports:
+      - '5173:5173'
+    restart: unless-stopped
+
+volumes:
+  # Данные PostgreSQL переживают `docker compose down` (удаляются только с `-v`).
+  pgdata:

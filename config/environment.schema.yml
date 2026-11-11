@@ -1,0 +1,33 @@
+# config/environment.schema.yml — переменные окружения как JSON Schema, записанная в YAML.
+#
+# Читается валидатором src/common/config/environment.validator.ts на старте приложения
+# (`ConfigModule.forRoot({ validate })`): битая конфигурация останавливает запуск до подключения
+# к БД. `additionalProperties: true` намеренно: в process.env лежат и системные переменные.
+
+$schema: http://json-schema.org/draft-07/schema#
+$id: https://it-smi.local/schema/environment.schema.yml
+title: AppEnvironment
+description: 'Variables the application reads from `.env` and from the process environment. `additionalProperties` is deliberately `true`: the process environment also carries system variables (`PATH`, `HOME`, `HOSTNAME`), which are not configuration errors.'
+type: object
+additionalProperties: true
+required:
+  - DATABASE_URL
+properties:
+  DATABASE_URL:
+    type: string
+    minLength: 1
+    description: PostgreSQL connection string used by Prisma. An empty value is as unusable as a missing one, so both report `DATABASE_URL is required`.
+  PORT:
+    type: integer
+    minimum: 1
+    maximum: 65535
+    default: 3000
+    description: HTTP port. The environment provides it as a string; the validator coerces it to a number before the application reads it.
+  NODE_ENV:
+    type: string
+    enum:
+      - development
+      - production
+      - test
+    default: development
+    description: Application mode.

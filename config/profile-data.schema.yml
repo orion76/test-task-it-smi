@@ -1,0 +1,165 @@
+# config/profile-data.schema.yml — JSON Schema импорта data/profile.yml.
+#
+# Файл собран генератором prisma/generators/seed-schema/seed-schema.generator.mts из prisma/schema.prisma и
+# prisma/generators/seed-schema/seed-schema.config.mts: структура (модели, вложенность, обязательность, типы,
+# enum-значения, массивы) выведена из DMMF, доменные ограничения (форматы дат, шаблоны URL,
+# необязательная дата окончания) взяты из конфига генератора. Руками не редактируется: правка
+# теряется при `prisma generate` и ловится тестом паритета
+# tests/unit/generated/artifacts.parity.spec.ts.
+#
+# Читает файл валидатор сидинга (AJV, prisma/seed/data/data.validator.ts): он проверяет data/profile.yml.
+
+$schema: http://json-schema.org/draft-07/schema#
+$id: https://it-smi.local/schema/profile-data.schema.yml
+title: ProfileData
+description: 'Format of data/profile.yml: the only source of the business-card content. The schema mirrors the Prisma models without service fields (id, profileId, createdAt, updatedAt) and is the single source of truth for the loader: validation (AJV) and the structure the writer walks are derived from it.'
+type: object
+additionalProperties: false
+required:
+  - version
+  - profile
+properties:
+  version:
+    const: 1
+    description: Format version. A different value is a hard error, not a silent parse.
+  profile:
+    $ref: '#/$defs/profile'
+$defs:
+  httpUrl:
+    description: Absolute http(s) URL with a scheme and a host. Relative links, bare domains and any other value are rejected with the path of the offending field.
+    type: string
+    format: uri
+    pattern: ^https?://
+  profile:
+    type: object
+    description: Business-card owner with nested collections.
+    additionalProperties: false
+    required:
+      - slug
+      - name
+      - description
+      - links
+      - skills
+      - experience
+      - projects
+    properties:
+      slug:
+        type: string
+        pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+        description: Kebab-case latin key of the idempotent profile upsert.
+      name:
+        type: string
+        minLength: 1
+      description:
+        type: string
+        minLength: 1
+      links:
+        type: array
+        items:
+          $ref: '#/$defs/socialLink'
+      skills:
+        type: array
+        items:
+          $ref: '#/$defs/skill'
+      experience:
+        type: array
+        items:
+          $ref: '#/$defs/experience'
+      projects:
+        type: array
+        items:
+          $ref: '#/$defs/project'
+  socialLink:
+    type: object
+    description: 'External link of the profile owner: one item of `profile.links`.'
+    additionalProperties: false
+    required:
+      - label
+      - url
+      - kind
+    properties:
+      label:
+        type: string
+        minLength: 1
+      url:
+        $ref: '#/$defs/httpUrl'
+      kind:
+        enum:
+          - GITHUB
+          - LINKEDIN
+          - WEBSITE
+          - OTHER
+        description: 'Kind of the link: one of the `SocialKind` values.'
+  skill:
+    type: object
+    description: Skill of the business card. `name` is the natural key of the idempotent upsert together with the profile id.
+    additionalProperties: false
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        minLength: 1
+      category:
+        type:
+          - string
+          - 'null'
+        description: 'Free-form grouping: "language", "backend", "database", …'
+  experience:
+    type: object
+    description: Employment record of the profile owner.
+    additionalProperties: false
+    required:
+      - company
+      - position
+      - startedAt
+      - achievements
+    properties:
+      company:
+        type: string
+        minLength: 1
+      position:
+        type: string
+        minLength: 1
+      startedAt:
+        type: string
+        format: date
+        description: Calendar date `YYYY-MM-DD`. A period of employment has neither a time of day nor a time zone.
+      endedAt:
+        anyOf:
+          - type: string
+            format: date
+            formatMinimum:
+              $data: 1/startedAt
+          - type: 'null'
+        description: |-
+          Calendar date `YYYY-MM-DD`, or `null` while the job is current. The pair `finished`/`endedAt`
+          is checked by the seed when it writes a row; a read validates nothing and returns the row as is.
+      finished:
+        type: boolean
+        description: |-
+          Whether the employment is over. `false` marks a current job, and then `endedAt` is empty; an
+          owner may hold several jobs at once, so this is a fact about the row, not about a missing date.
+          `NOT NULL DEFAULT false`, so rows written before the flag existed read as `false`.
+      achievements:
+        type: array
+        items:
+          type: string
+  project:
+    type: object
+    description: Project of the profile owner. The link and the description are optional.
+    additionalProperties: false
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        minLength: 1
+      url:
+        anyOf:
+          - type: 'null'
+          - $ref: '#/$defs/httpUrl'
+      description:
+        type:
+          - string
+          - 'null'

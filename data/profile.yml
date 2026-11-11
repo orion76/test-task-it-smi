@@ -1,0 +1,154 @@
+# data/profile.yml — единственный источник контента визитки.
+#
+# Назначение: имя, описание, ссылки, навыки, опыт и проекты живут здесь, а не в коде.
+# `prisma/seed/main.ts` только читает этот файл, валидирует его по JSON-схеме
+# (`config/profile-data.schema.yml`), проверяет согласованность периодов
+# (`prisma/seed/data/experience-periods.ts`) и раскладывает данные в БД; какие модели писать,
+# по каким ключам и как проставлять `order`, описано в `config/seed.config.yml`.
+# Схема повторяет модель Prisma (`prisma/schema.prisma`) без служебных полей:
+# `id`, `profileId`, `createdAt`, `updatedAt`.
+#
+# Правило порядка: порядок элементов в массивах = порядок вывода в API. Поле `order` в БД
+# проставляет загрузчик по индексу элемента; руками в YAML его не пишем, иначе легко получить
+# дыры и дубли. Опыт перечислен от свежего места к раннему, навыки — сгруппированы по `category`.
+#
+# Персональные контакты — телефон и email — в публичный репозиторий не публикуются: из контактов
+# здесь только ссылки (профили и мессенджеры) и открытые страницы проектов.
+#
+# Формат полей:
+#   - `version` — версия формата; несовпадение при загрузке = явная ошибка, а не молчаливый парс;
+#   - `startedAt` / `endedAt` — календарные даты `YYYY-MM-DD` без времени и часового пояса;
+#   - `finished` / `endedAt` — пара, описывающая состояние места работы:
+#       завершённое место: `finished: true` и дата окончания `endedAt`;
+#       текущее место: флага нет (или `finished: false`), `endedAt` отсутствует или `null`.
+#     Согласованность пары проверяет сидинг при записи, в `prisma/seed/data/experience-periods.ts`;
+#     чтение из БД ничего не валидирует и отдаёт строку в API как есть;
+#   - параллельные места работы разрешены: несколько записей могут пересекаться по датам,
+#     пересечение периодов ошибкой не считается;
+#   - `isCurrent` не пишется: такого поля в API нет, состояние места работы клиент выводит
+#     из `finished` и `endedAt`;
+#   - URL (`links[].url`, `projects[].url`) — только абсолютный `http(s)`;
+#   - `kind` у ссылки — только GITHUB | LINKEDIN | WEBSITE | OTHER (enum SocialKind);
+#   - `skills[].category` — свободная строка-группировка («language», «backend», «database», …);
+#   - `projects[].url` и `projects[].description` необязательны (могут быть null).
+
+version: 1
+
+profile:
+  slug: orion76
+  name: "Павел Глазков"
+  description: "Full-stack разработчик с 15+ годами опыта: TypeScript, Angular, Node.js, NestJS. Проектирую архитектуру слабо связанных и тестируемых систем (Clean Architecture, SOLID, DDD), мигрирую legacy-код на современные платформы, автоматизирую регрессионное тестирование. Работаю удалённо и async-first: текстовые апдейты, прозрачные pull request, минимум созвонов."
+
+  links:
+    - kind: GITHUB
+      label: GitHub
+      url: "https://github.com/orion76"
+    - kind: LINKEDIN
+      label: LinkedIn
+      url: "https://www.linkedin.com/in/%D0%B3%D0%BB%D0%B0%D0%B7%D0%BA%D0%BE%D0%B2-%D0%BF%D0%B0%D0%B2%D0%B5%D0%BB-87b47b1a0/"
+    - kind: OTHER
+      label: Telegram
+      url: "https://t.me/orion76"
+
+  skills:
+    - name: TypeScript
+      category: language
+    - name: JavaScript
+      category: language
+    - name: PHP
+      category: language
+    - name: Angular
+      category: frontend
+    - name: Ionic
+      category: frontend
+    - name: RxJS
+      category: frontend
+    - name: NgRx
+      category: frontend
+    - name: Redux
+      category: frontend
+    - name: HTML5
+      category: markup
+    - name: CSS3
+      category: markup
+    - name: Node.js
+      category: backend
+    - name: NestJS
+      category: backend
+    - name: FeathersJS
+      category: backend
+    - name: ExtJS
+      category: backend
+    - name: Smarty
+      category: backend
+    - name: Clean Architecture
+      category: architecture
+    - name: SOLID
+      category: architecture
+    - name: DDD
+      category: architecture
+    - name: Playwright
+      category: testing
+    - name: Selenium
+      category: testing
+    - name: Unit testing
+      category: testing
+    - name: Git
+      category: tooling
+    - name: Linux
+      category: tooling
+    - name: GitHub Actions
+      category: tooling
+    - name: Drupal
+      category: cms
+    - name: Shopware
+      category: cms
+
+  experience:
+    - company: Vutlan
+      position: "Frontend-разработчик"
+      startedAt: 2025-09-01
+      endedAt: 2026-05-31
+      finished: true
+      achievements:
+        - "Поддержка и развитие веб-интерфейса на Angular 1.7 для системы мониторинга и управления электронными датчиками (WiFi, Bluetooth, Zigbee, LoRaWAN)"
+        - "Рефакторинг крупнейшего контроллера (~6000 строк): валидация и трансформация данных через AJV, декомпозиция — размер кода сокращён вдвое"
+        - "Подготовка архитектуры к миграции на Angular 2+ и к мобильному приложению-агрегатору устройств мониторинга"
+    - company: HOS247
+      position: "Full-stack разработчик (Node.js, Angular, Ionic)"
+      startedAt: 2021-11-01
+      endedAt: 2024-03-31
+      finished: true
+      achievements:
+        - "Система GPS-мониторинга транспорта: бэкенд на Node.js и FeathersJS, фронтенд на Angular 2+ (NgRx, RxJS), мобильное приложение на Ionic"
+        - "White-label кастомизация интерфейсов для 10–20 реселлеров: брендированное приложение и админ-порталы с уникальными стилями"
+        - "Двухфакторная аутентификация (Google Authenticator, Email) для административных порталов"
+        - "Визуализация движения транспорта на Google Maps, включая корректное определение маршрута и скорости на малых скоростях"
+        - "Автоматизация регрессионного тестирования вёрстки (Selenium Server и Gemini): регрессы выявлялись автоматически при каждом изменении кода"
+        - "Генерация PDF-отчётов (HTML → PDF) для надзорных органов"
+    - company: Shopware
+      position: "Программист-разработчик"
+      startedAt: 2019-06-01
+      endedAt: 2021-05-31
+      finished: true
+      achievements:
+        - "Разработка и поддержка интернет-магазинов на Shopware 5: PHP, ExtJS, Smarty"
+    - company: Freelance
+      position: "Программист-разработчик"
+      startedAt: 2009-01-01
+      endedAt: 2019-06-30
+      finished: true
+      achievements:
+        - "Разработка веб-приложений, интернет-магазинов и онлайн-сервисов на Drupal 4.7–9 (PHP, JavaScript)"
+        - "Создание плагинов и модулей под заказ"
+
+  projects:
+    - name: "@orion76/plugin"
+      url: "https://github.com/orion76/plugin"
+      description: "Кроссплатформенная TypeScript-библиотека с архитектурным паттерном Plugin для Clean Architecture и DDD: CI, тесты, документация на трёх языках, публикация на npm."
+    - name: "@orion76/ng-plugin"
+      url: "https://github.com/orion76/ng-plugin"
+      description: "Angular-интеграция паттерна Plugin для построения слабо связанных модульных приложений: CI, тесты, публикация на npm."
+    - name: clapp
+      url: "https://github.com/orion76/clapp"
+      description: "TypeScript CLI-фреймворк с плагинной архитектурой для консольных приложений: публикация на npm."

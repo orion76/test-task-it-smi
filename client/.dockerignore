@@ -1,0 +1,29 @@
+# Build context of the client images: only the sources and manifests needed to install dependencies
+# and run the Angular CLI. Everything below is installed or produced inside the image.
+
+# Dependencies and build output are recreated by `npm ci` and `ng build`; the Angular cache is
+# machine-local as well.
+node_modules
+dist
+.angular
+
+# Lint and editor configuration are not read by the build, they only inflate the context.
+eslint.config.mjs
+.vscode
+.history
+
+# Test sources and coverage never reach either image.
+*.spec.ts
+*.e2e-spec.ts
+coverage
+
+# Git metadata and local environment files: secrets must not be baked into the image.
+.git
+.gitignore
+.env
+.env.*
+
+# Logs and temporary files left by local runs.
+*.log
+tmp
+.tmp

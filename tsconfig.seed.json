@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // `types` задан явно: без него компилятор не подхватывает @types/node, а сидинг использует
+    // `process`, `console`, `node:fs/promises` и `node:path`. Проверено `tsc -p tsconfig.seed.json`.
+    "types": ["node"],
+    "rootDir": "./prisma",
+    "outDir": "./dist/prisma"
+  },
+  "include": ["prisma/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

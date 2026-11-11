@@ -1,0 +1,13 @@
+{
+  "name": "yaml-loader",
+  "version": "1.0.0",
+  "description": "Loads a YAML config from the project root and validates it against a JSON Schema",
+  "private": true,
+  "type": "commonjs",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "peerDependencies": {
+    "ajv": "^8.20.0",
+    "yaml": "^2.5.0"
+  }
+}

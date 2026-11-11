@@ -1,0 +1,50 @@
+{
+  // Отдельный проект для тестов: они лежат в `tests/` вне `src/`, поэтому `tsconfig.json`
+  // приложения их не включает, и type-aware правила ESLint не находят файл в проекте
+  // (`... was not found by the project service`).
+  //
+  // `types` задан явно по двум причинам: TypeScript 6 не подтягивает пакеты `@types` неявно,
+  // поэтому нужны глобальные `describe`/`it`/`expect` из `@types/jest`, а `node:*` — из
+  // `@types/node`. То же переопределение делает `ts-jest` в `jest.config.js`.
+  //
+  // Тестируемые исходники пакета включены в программу, иначе типы импортируемых модулей не
+  // разрешаются. Файл нужен только статическому анализу: `noEmit`, в сборки не входит.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // The specs import the tooling of `prisma/` by its actual `.mts` extension: it is what `node`
+    // executes and what `tsconfig.generators.json` resolves, so the spec tests the same specifier
+    // the pipeline uses. The flag is legal only with `noEmit`, which this project already sets.
+    "allowImportingTsExtensions": true,
+    // Карта алиасов тестов — единственный их источник: тесты импортируют код приложения,
+    // генераторов и пакета по коротким именам. `baseUrl` здесь не используется: TypeScript 6 его
+    // отвергает (TS5101), а `paths` без `baseUrl` считается от каталога этого конфига, поэтому
+    // цели записаны с `./`. `@lib` (точное совпадение) — индекс пакета, `@lib/*` — его остальные
+    // файлы (алиас `@prisma/*` не вводится: он перекрыл бы пакет `@prisma/client`). Jest-карту
+    // `moduleNameMapper` строит из этого файла `tests/support/aliases.js`, а в `knip.jsonc` карта
+    // продублирована, потому что knip читает `paths` только из корневого `tsconfig.json`.
+    "paths": {
+      "@src/*": ["./src/*"],
+      "@generators/*": ["./prisma/generators/*"],
+      "@seed/*": ["./prisma/seed/*"],
+      "@scripts/*": ["./prisma/scripts/*"],
+      "@lib": ["./packages/yaml-loader/src"],
+      "@lib/*": ["./packages/yaml-loader/src/*"]
+    },
+    // A spec spans CommonJS `.ts` (its own `__dirname`) and the `.mts` generators, which are ES
+    // modules that use `import.meta.dirname`. `nodenext` picks the module kind of every file from
+    // its extension, so the generators type-check as ESM instead of failing on `import.meta` under
+    // the inherited `commonjs`. `noUnusedLocals`/`noUnusedParameters` are turned off because the
+    // `.mts` sources are already checked by `tsconfig.generators.json` with their own settings, and
+    // the inherited checks only re-fire on their private helpers (e.g. an intentionally unused
+    // parameter of `renderQueriesOfEntity`); unused code of the specs themselves is caught by lint.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "rootDir": ".",
+    "types": ["node", "jest"]
+  },
+  "include": ["tests/**/*.ts", "packages/yaml-loader/src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "packages/yaml-loader/lib"]
+}
