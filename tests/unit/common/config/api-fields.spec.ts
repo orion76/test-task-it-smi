@@ -4,12 +4,16 @@
  * client delegate, so the index has to answer the same way. A relation the contract does not declare
  * is a mistake of the resolver, so it is reported with the file, the entity and the field.
  *
+ * A relation is read either through a column of a row or through a tie table between the two rows;
+ * the parser has to hand both shapes to the loader and reject a tie table that is missing one of its
+ * three names.
+ *
  * `orderOf` reads the `order` block of the same model: the read order of a collection belongs to
  * the contract, so the data layer names no column of its own.
  *
  * The happy paths read the real contract in this process; the broken shapes (a `references` block
- * that is not a mapping, an empty `entity` or `property`) need a broken file, which lives in a
- * disposable copy of the project run by a harness in a child process.
+ * that is not a mapping, an empty `entity` or `property`, an incomplete `through`) need a broken
+ * file, which lives in a disposable copy of the project run by a harness in a child process.
  */
 import { orderOf, referenceOf } from '@src/common/config/api-fields';
 
@@ -39,29 +43,42 @@ afterAll(() => {
 });
 
 describe('referenceOf', () => {
-  it('returns the entity and the column of a declared relation', () => {
-    expect(referenceOf('profile', 'links')).toEqual({ entity: 'socialLink', property: 'profileId' });
+  it('returns the tie table of a collection shared between profiles', () => {
+    expect(referenceOf('profile', 'links')).toEqual({
+      entity: 'socialLink',
+      through: { entity: 'profileSocialLink', parent: 'profileId', target: 'socialLinkId' },
+    });
+    expect(referenceOf('profile', 'skills')).toEqual({
+      entity: 'skill',
+      through: { entity: 'profileSkill', parent: 'profileId', target: 'skillId' },
+    });
+  });
+
+  it('returns the column of a relation the row stores itself', () => {
     expect(referenceOf('profile', 'experience')).toEqual({
       entity: 'experience',
       property: 'profileId',
     });
   });
 
-  it('answers the inverse side of a relation the same way', () => {
-    expect(referenceOf('socialLink', 'profile')).toEqual({
+  it('answers the inverse side of a one-hop relation the same way', () => {
+    expect(referenceOf('experience', 'profile')).toEqual({
       entity: 'profile',
       property: 'profileId',
     });
-    expect(referenceOf('skill', 'profile')).toEqual({ entity: 'profile', property: 'profileId' });
+    expect(referenceOf('project', 'profile')).toEqual({ entity: 'profile', property: 'profileId' });
   });
 
   it('indexes the contract by the entity name, not by the model name', () => {
     const index = valueOf(project.run(HARNESS, 'ts-node')) as Record<string, unknown>;
 
-    expect(index).toEqual({ entity: 'socialLink', property: 'profileId' });
-    // The entity key is `socialLink`, so the model spelling `SocialLink` has no reference at all.
-    expect(() => referenceOf('SocialLink', 'profile')).toThrow(
-      'config/api-fields.yml: no reference "profile" of entity "SocialLink"; ' +
+    expect(index).toEqual({
+      entity: 'socialLink',
+      through: { entity: 'profileSocialLink', parent: 'profileId', target: 'socialLinkId' },
+    });
+    // The entity key is `profile`, so the model spelling `Profile` has no reference at all.
+    expect(() => referenceOf('Profile', 'links')).toThrow(
+      'config/api-fields.yml: no reference "links" of entity "Profile"; ' +
         'declare it in the "references" block of the model',
     );
   });
@@ -123,6 +140,53 @@ describe('referenceOf', () => {
 
     expect(failureOf(project.run(HARNESS, 'ts-node'))).toBe(
       'config/api-fields.yml: Profile.references.links.property must be a column name',
+    );
+  });
+
+  it('fails naming the model, the field and the missing key of an incomplete through-form', () => {
+    project.write(
+      'config/api-fields.yml',
+      [
+        'version: 1',
+        'models:',
+        '  Profile:',
+        '    description: Owner',
+        '    references:',
+        '      links:',
+        '        entity: socialLink',
+        '        through:',
+        '          entity: profileSocialLink',
+        '          parent: profileId',
+        '',
+      ].join('\n'),
+    );
+
+    expect(failureOf(project.run(HARNESS, 'ts-node'))).toBe(
+      'config/api-fields.yml: Profile.references.links.through.target must be a column name',
+    );
+  });
+
+  it('fails naming the through-form when its table is empty', () => {
+    project.write(
+      'config/api-fields.yml',
+      [
+        'version: 1',
+        'models:',
+        '  Profile:',
+        '    description: Owner',
+        '    references:',
+        '      links:',
+        '        entity: socialLink',
+        '        through:',
+        '          entity:',
+        '          parent: profileId',
+        '          target: socialLinkId',
+        '',
+      ].join('\n'),
+    );
+
+    expect(failureOf(project.run(HARNESS, 'ts-node'))).toBe(
+      'config/api-fields.yml: Profile.references.links.through.entity must be an entity name',
     );
   });
 

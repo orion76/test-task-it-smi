@@ -1,9 +1,9 @@
 /**
  * Hand-written datamodel of the domain, shaped exactly like the DMMF Prisma hands to a generator.
  *
- * The real `prisma/schema.prisma` has five models, one enum and one `String[]` column; the fixture
+ * The real `prisma/schema.prisma` has seven models, one enum and one `String[]` column; the fixture
  * repeats that shape field by field (kinds, nullability, defaults, documentation, relation names and
- * the foreign key of a relation). Running `prisma generate` to obtain a fixture would test Prisma
+ * the foreign key of a relation). Two of the models are the tie tables of the dictionaries. Running `prisma generate` to obtain a fixture would test Prisma
  * instead of the generator and would make the spec depend on the binary, so the datamodel is spelled
  * out here. A change of `schema.prisma` is a change of this file, which is the point: the specs are
  * about rendering, and their input is data.
@@ -70,7 +70,7 @@ function socialKind(): DMMF.DatamodelEnum {
   return enumOf('SocialKind', ['GITHUB', 'LINKEDIN', 'WEBSITE', 'OTHER']);
 }
 
-/** The `Profile` model with its four collections, as `schema.prisma` declares it. */
+/** The `Profile` model with its collections, as `schema.prisma` declares it. */
 export function profileModel(): DMMF.Model {
   return model(
     'Profile',
@@ -80,28 +80,12 @@ export function profileModel(): DMMF.Model {
       field({
         name: 'slug',
         type: 'String',
-        documentation: 'Kebab-case latin key of the idempotent profile upsert.',
+        documentation: 'Latin kebab-case identifier of the profile.',
       }),
       field({ name: 'name', type: 'String' }),
       field({ name: 'description', type: 'String' }),
       field({ name: 'createdAt', type: 'DateTime', hasDefaultValue: true }),
       field({ name: 'updatedAt', type: 'DateTime' }),
-      field({
-        name: 'links',
-        type: 'SocialLink',
-        kind: 'object',
-        isList: true,
-        relationName: 'ProfileToSocialLink',
-        relationFromFields: [],
-      }),
-      field({
-        name: 'skills',
-        type: 'Skill',
-        kind: 'object',
-        isList: true,
-        relationName: 'ProfileToSkill',
-        relationFromFields: [],
-      }),
       field({
         name: 'experience',
         type: 'Experience',
@@ -118,19 +102,34 @@ export function profileModel(): DMMF.Model {
         relationName: 'ProfileToProject',
         relationFromFields: [],
       }),
+      field({
+        name: 'profileSkills',
+        type: 'ProfileSkill',
+        kind: 'object',
+        isList: true,
+        relationName: 'ProfileToProfileSkill',
+        relationFromFields: [],
+      }),
+      field({
+        name: 'profileSocialLinks',
+        type: 'ProfileSocialLink',
+        kind: 'object',
+        isList: true,
+        relationName: 'ProfileToProfileSocialLink',
+        relationFromFields: [],
+      }),
     ],
     'Business-card owner with nested collections.',
   );
 }
 
-/** The `SocialLink` model: one item of `profile.links`, the owner of the `profileId` column. */
+/** The `SocialLink` dictionary row: shared by every profile that lists the address. */
 export function socialLinkModel(): DMMF.Model {
   return model(
     'SocialLink',
     [
       field({ name: 'id', type: 'String', hasDefaultValue: true }),
       field({ name: 'type', type: 'String', hasDefaultValue: true }),
-      field({ name: 'profileId', type: 'String' }),
       field({ name: 'label', type: 'String' }),
       field({ name: 'url', type: 'String' }),
       field({
@@ -140,25 +139,25 @@ export function socialLinkModel(): DMMF.Model {
         documentation: 'Kind of the link: one of the `SocialKind` values.',
       }),
       field({
-        name: 'profile',
-        type: 'Profile',
+        name: 'profileSocialLinks',
+        type: 'ProfileSocialLink',
         kind: 'object',
-        relationName: 'ProfileToSocialLink',
-        relationFromFields: ['profileId'],
+        isList: true,
+        relationName: 'ProfileSocialLinkToSocialLink',
+        relationFromFields: [],
       }),
     ],
-    'External link of the profile owner: one item of `profile.links`.',
+    'External link of the profile owner. A dictionary row shared by the profiles that list it.',
   );
 }
 
-/** The `Skill` model: one item of `profile.skills`, the only model with a nullable text column. */
+/** The `Skill` dictionary row: the only model with a nullable text column. */
 export function skillModel(): DMMF.Model {
   return model(
     'Skill',
     [
       field({ name: 'id', type: 'String', hasDefaultValue: true }),
       field({ name: 'type', type: 'String', hasDefaultValue: true }),
-      field({ name: 'profileId', type: 'String' }),
       field({ name: 'name', type: 'String' }),
       field({
         name: 'category',
@@ -167,15 +166,64 @@ export function skillModel(): DMMF.Model {
         documentation: 'Free-form grouping: "language", "backend", "database", …',
       }),
       field({
-        name: 'profile',
-        type: 'Profile',
+        name: 'profileSkills',
+        type: 'ProfileSkill',
         kind: 'object',
-        relationName: 'ProfileToSkill',
-        relationFromFields: ['profileId'],
+        isList: true,
+        relationName: 'ProfileSkillToSkill',
+        relationFromFields: [],
       }),
     ],
-    'Skill of the profile owner.',
+    'Skill of the profile owner. A dictionary row shared by the profiles that list it.',
   );
+}
+
+/** The `ProfileSkill` tie table: one profile tied to one dictionary row. */
+function profileSkillModel(): DMMF.Model {
+  return model('ProfileSkill', [
+    field({ name: 'id', type: 'String', hasDefaultValue: true }),
+    field({ name: 'type', type: 'String', hasDefaultValue: true }),
+    field({ name: 'profileId', type: 'String' }),
+    field({ name: 'skillId', type: 'String' }),
+    field({
+      name: 'profile',
+      type: 'Profile',
+      kind: 'object',
+      relationName: 'ProfileToProfileSkill',
+      relationFromFields: ['profileId'],
+    }),
+    field({
+      name: 'skill',
+      type: 'Skill',
+      kind: 'object',
+      relationName: 'ProfileSkillToSkill',
+      relationFromFields: ['skillId'],
+    }),
+  ]);
+}
+
+/** The `ProfileSocialLink` tie table: one profile tied to one dictionary row. */
+function profileSocialLinkModel(): DMMF.Model {
+  return model('ProfileSocialLink', [
+    field({ name: 'id', type: 'String', hasDefaultValue: true }),
+    field({ name: 'type', type: 'String', hasDefaultValue: true }),
+    field({ name: 'profileId', type: 'String' }),
+    field({ name: 'socialLinkId', type: 'String' }),
+    field({
+      name: 'profile',
+      type: 'Profile',
+      kind: 'object',
+      relationName: 'ProfileToProfileSocialLink',
+      relationFromFields: ['profileId'],
+    }),
+    field({
+      name: 'socialLink',
+      type: 'SocialLink',
+      kind: 'object',
+      relationName: 'ProfileSocialLinkToSocialLink',
+      relationFromFields: ['socialLinkId'],
+    }),
+  ]);
 }
 
 /** The `Experience` model: the only `String[]` column and the only nullable date of the domain. */
@@ -250,7 +298,15 @@ export function projectModel(): DMMF.Model {
 /** The datamodel of the domain in the declaration order of `schema.prisma`. */
 export function domainDatamodel(): DMMF.Datamodel {
   return datamodel(
-    [profileModel(), socialLinkModel(), skillModel(), experienceModel(), projectModel()],
+    [
+      profileModel(),
+      socialLinkModel(),
+      skillModel(),
+      profileSkillModel(),
+      profileSocialLinkModel(),
+      experienceModel(),
+      projectModel(),
+    ],
     [socialKind()],
   );
 }

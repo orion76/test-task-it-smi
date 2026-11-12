@@ -41,6 +41,7 @@ const ARTIFACTS = [
   'src/generated/graphql/resolvers/relations.resolver.ts',
   'src/generated/graphql/resolvers/queries.resolver.ts',
   'config/profile-data.schema.yml',
+  'config/dictionaries.yml',
 ] as const;
 
 /**

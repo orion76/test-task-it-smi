@@ -80,9 +80,9 @@ describe('assertFragment', () => {
 describe('assertOverridable', () => {
   it('rejects a rule for a relation, which the import file never carries', () => {
     expect(() =>
-      assertOverridable(modelOf('SocialLink'), fieldOf('SocialLink', 'profile'), new Set()),
+      assertOverridable(modelOf('Experience'), fieldOf('Experience', 'profile'), new Set()),
     ).toThrow(
-      `${CONFIG_FILE}: overrides."SocialLink.profile": a relation is not part of the import file, the row is nested under its parent`,
+      `${CONFIG_FILE}: overrides."Experience.profile": a relation is not part of the import file, the row is nested under its parent`,
     );
   });
 

@@ -4,28 +4,61 @@
  * relation the contract does not publish is not rendered at all. The spec fixes those three facts,
  * because a wrong method or a missing filter would still compile and would only show up as N+1
  * queries or a leaked relation in the API.
+ *
+ * A collection of a dictionary has no field of its own in the schema: it is declared in the contract
+ * under the name the API publishes and read through a tie table, so the renderer takes the shape of
+ * the relation from the contract and not from the model.
  */
 import type { DMMF } from '@prisma/generator-helper';
 
 import { renderRelations } from '@generators/graphql/relations.renderer.mts';
 import type { TReferenceRules } from '@generators/graphql/types.mts';
-import { domainDatamodel, socialLinkModel } from '../support/datamodel';
+import { domainDatamodel, experienceModel, profileModel } from '../support/datamodel';
 
-/** `Model.field` → description of the relation, as the contract writes it. */
-type TContract = Record<string, Record<string, string>>;
+/** One rule of the contract, as the renderer reads it. */
+type TRule = Record<string, unknown>;
+
+/** `Model.field` → rule of the relation, as the contract writes it. */
+type TContract = Record<string, Record<string, TRule>>;
 
 /** The `references` of the real contract, reduced to what the renderer reads. */
 const CONTRACT: TContract = {
   Profile: {
-    links: 'Ссылки владельца визитки',
-    skills: 'Навыки владельца визитки',
-    experience: 'Места работы владельца визитки',
-    projects: 'Проекты владельца визитки',
+    links: {
+      description: 'Ссылки владельца визитки',
+      entity: 'socialLink',
+      through: { entity: 'profileSocialLink', parent: 'profileId', target: 'socialLinkId' },
+    },
+    skills: {
+      description: 'Навыки владельца визитки',
+      entity: 'skill',
+      through: { entity: 'profileSkill', parent: 'profileId', target: 'skillId' },
+    },
+    experience: {
+      description: 'Места работы владельца визитки',
+      entity: 'experience',
+      property: 'profileId',
+    },
+    projects: {
+      description: 'Проекты владельца визитки',
+      entity: 'project',
+      property: 'profileId',
+    },
   },
-  SocialLink: { profile: 'Владелец визитки, которому принадлежит ссылка' },
-  Skill: { profile: 'Владелец визитки, которому принадлежит навык' },
-  Experience: { profile: 'Владелец визитки, которому принадлежит место работы' },
-  Project: { profile: 'Владелец визитки, которому принадлежит проект' },
+  Experience: {
+    profile: {
+      description: 'Владелец визитки, которому принадлежит место работы',
+      entity: 'profile',
+      property: 'profileId',
+    },
+  },
+  Project: {
+    profile: {
+      description: 'Владелец визитки, которому принадлежит проект',
+      entity: 'profile',
+      property: 'profileId',
+    },
+  },
 };
 
 /** Turns the contract fixture into the lookup the renderer takes. */
@@ -33,13 +66,7 @@ function referencesOf(contract: TContract): Map<string, TReferenceRules> {
   const references = new Map<string, TReferenceRules>();
 
   for (const [model, fields] of Object.entries(contract)) {
-    const rules: TReferenceRules = {};
-
-    for (const [field, description] of Object.entries(fields)) {
-      rules[field] = { description };
-    }
-
-    references.set(model, rules);
+    references.set(model, { ...fields });
   }
 
   return references;
@@ -63,8 +90,19 @@ describe('renderRelations', () => {
     expect(source).toContain("return this.loader.loadOne(row, 'profile');");
   });
 
+  it('reads the shape of a dictionary collection from the through-form of the contract', () => {
+    const source = renderRelations(models, references);
+
+    expect(source).toContain('@ResolveField(() => [Skill], {');
+    expect(source).toContain('skills(@Parent() row: IEntity): Promise<IEntity[]> {');
+    expect(source).not.toContain("this.loader.loadOne(row, 'skills')");
+  });
+
   it('matches the return type to the shape of the relation, not to the target model', () => {
-    const source = renderRelations([socialLinkModel()], references);
+    const source = renderRelations(
+      [experienceModel(), profileModel()],
+      referencesOf({ Experience: CONTRACT.Experience }),
+    );
 
     expect(source).toContain('@ResolveField(() => Profile, {');
     expect(source).toContain('Promise<IEntity | null>');
@@ -74,7 +112,7 @@ describe('renderRelations', () => {
 
   it('does not render a relation the contract does not publish', () => {
     const partial = referencesOf({
-      Profile: { links: 'Ссылки', projects: 'Проекты' },
+      Profile: { links: CONTRACT.Profile.links, projects: CONTRACT.Profile.projects },
     });
     const source = renderRelations(models, partial);
 
@@ -86,15 +124,15 @@ describe('renderRelations', () => {
 
   it('leaves out a model whose relations are all unpublished', () => {
     const partial = referencesOf({
-      Profile: { links: 'Ссылки' },
-      SocialLink: { profile: 'Владелец' },
+      Profile: { links: CONTRACT.Profile.links },
+      Experience: { profile: CONTRACT.Experience.profile },
     });
     const source = renderRelations(models, partial);
 
     expect(source).toContain('export class ProfileRelationsResolver');
-    expect(source).toContain('export class SocialLinkRelationsResolver');
+    expect(source).toContain('export class ExperienceRelationsResolver');
     expect(source).not.toContain('export class SkillRelationsResolver');
-    expect(source).not.toContain('export class ExperienceRelationsResolver');
+    expect(source).not.toContain('export class SocialLinkRelationsResolver');
     expect(source).not.toContain('export class ProjectRelationsResolver');
   });
 
@@ -106,8 +144,6 @@ describe('renderRelations', () => {
       'ExperienceRelationsResolver',
       'ProfileRelationsResolver',
       'ProjectRelationsResolver',
-      'SkillRelationsResolver',
-      'SocialLinkRelationsResolver',
     ]);
     expect(source.indexOf('experience(@Parent()')).toBeLessThan(
       source.indexOf('links(@Parent()'),
@@ -148,8 +184,12 @@ describe('renderRelations', () => {
   });
 
   it('escapes the description of a relation', () => {
-    const quoted = referencesOf({ SocialLink: { profile: "owner's profile \\ link" } });
-    const source = renderRelations([socialLinkModel()], quoted);
+    const quoted = referencesOf({
+      Experience: {
+        profile: { description: "owner's profile \\ link", entity: 'profile', property: 'profileId' },
+      },
+    });
+    const source = renderRelations([experienceModel(), profileModel()], quoted);
 
     expect(source).toContain("description: 'owner\\'s profile \\\\ link'");
   });

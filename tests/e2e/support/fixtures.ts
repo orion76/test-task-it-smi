@@ -15,6 +15,8 @@ const FIXTURE_SLUG_PREFIX = 'e2e-fixture-';
  *
  * The rows are written through the Prisma client of the test, not through the API: the API is
  * read-only by design, and the fixture only exists to give the read path more than one parent.
+ * A skill and a link are dictionaries shared between profiles, so the fixture writes the dictionary
+ * row and the tie of this profile in one nested create: that is the shape the seed produces too.
  *
  * @param prisma client of the test database
  * @param key unique suffix of the slug
@@ -31,10 +33,16 @@ export async function insertProfileFixture(
       slug: `${FIXTURE_SLUG_PREFIX}${key}`,
       name: `Fixture ${key}`,
       description: `Temporary profile of the e2e suite (${key}).`,
-      links: {
-        create: [{ label: 'GitHub', url: `https://example.com/${key}`, kind: 'GITHUB' }],
+      profileSocialLinks: {
+        create: {
+          socialLink: {
+            create: { label: 'GitHub', url: `https://example.com/${key}`, kind: 'GITHUB' },
+          },
+        },
       },
-      skills: { create: [{ name: `Fixture skill ${key}` }] },
+      profileSkills: {
+        create: { skill: { create: { name: `Fixture skill ${key}` } } },
+      },
       experience: {
         create: [
           {
@@ -54,11 +62,15 @@ export async function insertProfileFixture(
 }
 
 /**
- * Removes every fixture profile of the suite; the child rows go with it through the relation
- * cascade, so the seeded content is the only thing left in the tables.
+ * Removes every fixture profile of the suite; the rows of the tie tables go with it through the
+ * relation cascade. The dictionary rows of the fixtures are not children of the profile, so they
+ * are removed by the same run: a dictionary row no profile lists any more belongs to nobody, while
+ * the seeded rows keep their tie to the seeded profile.
  *
  * @param prisma client of the test database
  */
 export async function deleteProfileFixtures(prisma: PrismaClient): Promise<void> {
   await prisma.profile.deleteMany({ where: { slug: { startsWith: FIXTURE_SLUG_PREFIX } } });
+  await prisma.skill.deleteMany({ where: { profileSkills: { none: {} } } });
+  await prisma.socialLink.deleteMany({ where: { profileSocialLinks: { none: {} } } });
 }

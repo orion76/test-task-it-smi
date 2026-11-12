@@ -30,7 +30,7 @@ describe('render', () => {
     expect(at(document, 'properties', 'profile', '$ref')).toBe('#/$defs/profile');
   });
 
-  it('derives one definition per model, keyed by the delegate name', () => {
+  it('derives one definition per model of the import file, keyed by the delegate name', () => {
     expect(keysAt(document, '$defs')).toEqual([
       'httpUrl',
       'profile',
@@ -39,6 +39,13 @@ describe('render', () => {
       'experience',
       'project',
     ]);
+  });
+
+  it('leaves the tie tables of the dictionaries out of the definitions', () => {
+    const definitions = keysAt(document, '$defs');
+
+    expect(definitions).not.toContain('profileSkill');
+    expect(definitions).not.toContain('profileSocialLink');
   });
 
   it('maps the scalar types of Prisma to the types of JSON Schema', () => {
@@ -112,8 +119,8 @@ describe('render', () => {
       pattern: '^[a-z0-9]+(-[a-z0-9]+)*$',
     });
     expect(at(document, '$defs', 'skill', 'description')).toBe(
-      'Skill of the business card. `name` is the natural key of the idempotent upsert ' +
-        'together with the profile id.',
+      'Skill of the business card. The name identifies the dictionary row and is unique in the ' +
+        'database, so one profile lists the same skill once.',
     );
     expect(at(document, '$defs', 'socialLink', 'properties', 'url')).toEqual({
       $ref: '#/$defs/httpUrl',
@@ -134,13 +141,28 @@ describe('render', () => {
     });
   });
 
+  it('nests a dictionary value under its parent, not the tie table of the two rows', () => {
+    expect(at(document, '$defs', 'profile', 'properties', 'links')).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/socialLink' },
+    });
+    expect(at(document, '$defs', 'profile', 'properties', 'skills')).toEqual({
+      type: 'array',
+      items: { $ref: '#/$defs/skill' },
+    });
+    // The tie table is written by the engine from the nesting, so it is not a property of a row.
+    expect(at(document, '$defs', 'profile', 'properties', 'profileSocialLinks')).toBeUndefined();
+    expect(at(document, '$defs', 'profile', 'properties', 'profileSkills')).toBeUndefined();
+  });
+
   it('nests the models through references and never back into the model itself', () => {
-    expect(at(document, '$defs', 'profile', 'properties', 'links', 'items', '$ref')).toBe(
-      '#/$defs/socialLink',
+    expect(at(document, '$defs', 'profile', 'properties', 'experience', 'items', '$ref')).toBe(
+      '#/$defs/experience',
     );
     // A single-valued relation is the inverse side of the parent link: the foreign key is derived
     // from the nesting, so the row of a collection does not carry its parent again.
     expect(at(document, '$defs', 'socialLink', 'properties', 'profile')).toBeUndefined();
+    expect(at(document, '$defs', 'skill', 'properties', 'profile')).toBeUndefined();
     expect(at(document, '$defs', 'experience', 'properties', 'profile')).toBeUndefined();
 
     for (const name of Object.keys(asObject(at(document, '$defs')))) {

@@ -40,21 +40,26 @@ describe('readContract', () => {
   it('reads the references of every model that declares them', () => {
     const contract = readContract();
 
-    expect([...contract.references.keys()]).toEqual([
-      'Profile',
-      'SocialLink',
-      'Skill',
-      'Experience',
-      'Project',
-    ]);
+    expect([...contract.references.keys()]).toEqual(['Profile', 'Experience', 'Project']);
     expect(Object.keys(contract.references.get('Profile') ?? {})).toEqual([
       'links',
       'skills',
       'experience',
       'projects',
     ]);
-    expect(contract.references.get('SocialLink')?.profile).toEqual({
-      description: 'Владелец визитки, которому принадлежит ссылка',
+    // The reader hands the rule to the renderer as the YAML parser returned it: the shape of the
+    // reference is the business of the build step, not of the renderer.
+    expect(contract.references.get('Profile')?.links).toEqual({
+      description: 'Ссылки владельца визитки',
+      entity: 'socialLink',
+      through: {
+        entity: 'profileSocialLink',
+        parent: 'profileId',
+        target: 'socialLinkId',
+      },
+    });
+    expect(contract.references.get('Experience')?.profile).toEqual({
+      description: 'Владелец визитки, которому принадлежит место работы',
       entity: 'profile',
       property: 'profileId',
     });

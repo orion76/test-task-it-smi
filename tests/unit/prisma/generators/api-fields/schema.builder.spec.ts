@@ -3,9 +3,9 @@
  * columns, relations and read orders `config/api-fields.yml` may mention. A wrong mapping here does
  * not fail the build — it silently accepts a contract that names a table, a column or an order key
  * nobody has — so the spec pins the mapping down: every model is listed, value columns become
- * `properties`, relations become `references` with the entity and the foreign key filled in, the
- * `order` block is pinned to the columns of the model, and a relation without a key is not
- * published at all.
+ * `properties`, relations become `references` with the entity and the foreign key filled in, a
+ * collection read through a tie table is published under the through-form, the `order` block is
+ * pinned to the columns of the model, and a relation without a key is not published at all.
  */
 import { buildSchema } from '@generators/api-fields/schema.builder.mts';
 
@@ -21,8 +21,36 @@ import { at, keysAt } from '../support/json';
 const datamodel = domainDatamodel();
 const schema: ReturnType<typeof buildSchema> = buildSchema(datamodel.models);
 
+/** One allowed through-form of a collection: the entity it holds and the tie table between the rows. */
+function throughReference(
+  entity: string,
+  linkModel: string,
+  parent: string,
+  target: string,
+): Record<string, unknown> {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['description', 'entity', 'through'],
+    properties: {
+      description: { type: 'string', minLength: 1 },
+      entity: { const: entity },
+      through: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['entity', 'parent', 'target'],
+        properties: {
+          entity: { const: linkModel },
+          parent: { const: parent },
+          target: { const: target },
+        },
+      },
+    },
+  };
+}
+
 describe('buildSchema', () => {
-  it('lists every model of the datamodel in name order', () => {
+  it('lists every model of the API in name order and leaves the tie tables out', () => {
     expect(keysAt(schema, 'properties', 'models', 'properties')).toEqual([
       'Experience',
       'Profile',
@@ -49,25 +77,15 @@ describe('buildSchema', () => {
             category: { $ref: '#/$defs/property' },
             id: { $ref: '#/$defs/property' },
             name: { $ref: '#/$defs/property' },
-            profileId: { $ref: '#/$defs/property' },
             type: { $ref: '#/$defs/property' },
           },
         },
         references: {
           type: 'object',
-          additionalProperties: false,
-          properties: {
-            profile: {
-              type: 'object',
-              additionalProperties: false,
-              required: ['description', 'entity', 'property'],
-              properties: {
-                description: { type: 'string', minLength: 1 },
-                entity: { const: 'profile' },
-                property: { const: 'profileId' },
-              },
-            },
+          additionalProperties: {
+            oneOf: [throughReference('profile', 'profileSkill', 'skillId', 'profileId')],
           },
+          properties: {},
         },
         order: {
           type: 'array',
@@ -75,7 +93,7 @@ describe('buildSchema', () => {
             type: 'object',
             minProperties: 1,
             maxProperties: 1,
-            propertyNames: { enum: ['category', 'id', 'name', 'profileId', 'type'] },
+            propertyNames: { enum: ['category', 'id', 'name', 'type'] },
             additionalProperties: { $ref: '#/$defs/sort' },
           },
         },
@@ -84,12 +102,42 @@ describe('buildSchema', () => {
   });
 
   it('lists value columns and enum columns, sorted, and leaves relations out of properties', () => {
-    expect(keysAt(schema, 'properties', 'models', 'properties', 'Profile', 'properties', 'properties', 'properties'))
-      .toEqual(['createdAt', 'description', 'id', 'name', 'slug', 'type', 'updatedAt']);
-    expect(keysAt(schema, 'properties', 'models', 'properties', 'SocialLink', 'properties', 'properties', 'properties'))
-      .toContain('kind');
-    expect(keysAt(schema, 'properties', 'models', 'properties', 'Profile', 'properties', 'references', 'properties'))
-      .toEqual(['experience', 'links', 'projects', 'skills']);
+    expect(
+      keysAt(
+        schema,
+        'properties',
+        'models',
+        'properties',
+        'Profile',
+        'properties',
+        'properties',
+        'properties',
+      ),
+    ).toEqual(['createdAt', 'description', 'id', 'name', 'slug', 'type', 'updatedAt']);
+    expect(
+      keysAt(
+        schema,
+        'properties',
+        'models',
+        'properties',
+        'SocialLink',
+        'properties',
+        'properties',
+        'properties',
+      ),
+    ).toContain('kind');
+    expect(
+      keysAt(
+        schema,
+        'properties',
+        'models',
+        'properties',
+        'Profile',
+        'properties',
+        'references',
+        'properties',
+      ),
+    ).toEqual(['experience', 'projects']);
   });
 
   it('pins every entry of the order block to one value column of the model', () => {
@@ -101,7 +149,7 @@ describe('buildSchema', () => {
         type: 'object',
         minProperties: 1,
         maxProperties: 1,
-        propertyNames: { enum: ['category', 'id', 'name', 'profileId', 'type'] },
+        propertyNames: { enum: ['category', 'id', 'name', 'type'] },
         additionalProperties: { $ref: '#/$defs/sort' },
       },
     });
@@ -139,8 +187,8 @@ describe('buildSchema', () => {
     });
   });
 
-  it('pins a relation to the delegate of its target and to its foreign key column', () => {
-    const links = at(
+  it('pins a direct relation to the delegate of its target and to its foreign key column', () => {
+    const projects = at(
       schema,
       'properties',
       'models',
@@ -149,13 +197,13 @@ describe('buildSchema', () => {
       'properties',
       'references',
       'properties',
-      'links',
+      'projects',
       'properties',
     );
 
-    expect(links).toEqual({
+    expect(projects).toEqual({
       description: { type: 'string', minLength: 1 },
-      entity: { const: 'socialLink' },
+      entity: { const: 'project' },
       property: { const: 'profileId' },
     });
     expect(
@@ -164,7 +212,7 @@ describe('buildSchema', () => {
         'properties',
         'models',
         'properties',
-        'SocialLink',
+        'Experience',
         'properties',
         'references',
         'properties',
@@ -195,6 +243,46 @@ describe('buildSchema', () => {
     ).toBe('profileId');
   });
 
+  it('publishes a collection read through a tie table under the through-form', () => {
+    expect(
+      at(
+        schema,
+        'properties',
+        'models',
+        'properties',
+        'Profile',
+        'properties',
+        'references',
+        'additionalProperties',
+      ),
+    ).toEqual({
+      oneOf: [
+        throughReference('skill', 'profileSkill', 'profileId', 'skillId'),
+        throughReference('socialLink', 'profileSocialLink', 'profileId', 'socialLinkId'),
+      ],
+    });
+  });
+
+  it('publishes the inverse collection of a tie table as a through-form, not as a column', () => {
+    expect(
+      at(
+        schema,
+        'properties',
+        'models',
+        'properties',
+        'SocialLink',
+        'properties',
+        'references',
+      ),
+    ).toEqual({
+      type: 'object',
+      additionalProperties: {
+        oneOf: [throughReference('profile', 'profileSocialLink', 'socialLinkId', 'profileId')],
+      },
+      properties: {},
+    });
+  });
+
   it('leaves a relation without an identifier column out of references', () => {
     const project = model('Project', [
       field({ name: 'id', type: 'String', hasDefaultValue: true }),
@@ -203,45 +291,70 @@ describe('buildSchema', () => {
     ]);
     const withMentor = buildSchema([project, skillModel()]);
 
-    expect(keysAt(withMentor, 'properties', 'models', 'properties', 'Project', 'properties', 'references', 'properties'))
-      .toEqual([]);
     expect(
-      keysAt(withMentor, 'properties', 'models', 'properties', 'Project', 'properties', 'properties', 'properties'),
+      keysAt(
+        withMentor,
+        'properties',
+        'models',
+        'properties',
+        'Project',
+        'properties',
+        'references',
+        'properties',
+      ),
+    ).toEqual([]);
+    expect(
+      keysAt(
+        withMentor,
+        'properties',
+        'models',
+        'properties',
+        'Project',
+        'properties',
+        'properties',
+        'properties',
+      ),
     ).toEqual(['id', 'name']);
   });
 
   it('gives a model without relations an empty references block', () => {
-    const skill = skillModel();
+    const project = projectModel();
     const isolated = model(
-      'Skill',
-      skill.fields.filter((entry) => entry.kind !== 'object'),
-      skill.documentation,
+      'Project',
+      project.fields.filter((entry) => entry.kind !== 'object'),
+      project.documentation,
     );
     const mixed = buildSchema(
-      datamodel.models.map((entry) => (entry.name === 'Skill' ? isolated : entry)),
+      datamodel.models.map((entry) => (entry.name === 'Project' ? isolated : entry)),
     );
 
-    expect(keysAt(mixed, 'properties', 'models', 'properties', 'Skill', 'properties', 'references', 'properties'))
-      .toEqual([]);
-    expect(at(mixed, 'properties', 'models', 'properties', 'Skill', 'required')).toEqual([
+    expect(
+      at(mixed, 'properties', 'models', 'properties', 'Project', 'properties', 'references'),
+    ).toEqual({ type: 'object', additionalProperties: false, properties: {} });
+    expect(at(mixed, 'properties', 'models', 'properties', 'Project', 'required')).toEqual([
       'description',
     ]);
-    expect(at(mixed, 'properties', 'models', 'properties', 'Skill', 'additionalProperties')).toBe(
+    expect(at(mixed, 'properties', 'models', 'properties', 'Project', 'additionalProperties')).toBe(
       false,
     );
-    // Without the opposite side `Profile.skills` has no foreign key to point at, so it is not
-    // published either: the collection and the single relation are two ends of one fact.
-    expect(keysAt(mixed, 'properties', 'models', 'properties', 'Profile', 'properties', 'references', 'properties'))
-      .toEqual(['experience', 'links', 'projects']);
   });
 
   it('keeps every relation of a model with several relations', () => {
+    expect(at(schema, 'properties', 'models', 'properties', 'Profile', 'required')).toEqual([
+      'description',
+    ]);
     expect(
-      at(schema, 'properties', 'models', 'properties', 'Profile', 'required'),
-    ).toEqual(['description']);
-    expect(
-      keysAt(schema, 'properties', 'models', 'properties', 'Profile', 'properties', 'references', 'properties'),
-    ).toEqual(['experience', 'links', 'projects', 'skills']);
+      keysAt(
+        schema,
+        'properties',
+        'models',
+        'properties',
+        'Profile',
+        'properties',
+        'references',
+        'properties',
+      ),
+    ).toEqual(['experience', 'projects']);
   });
 
   it('names the entity of a reference by the delegate name of the model', () => {
@@ -271,7 +384,17 @@ describe('buildSchema', () => {
     const project = projectModel();
     const rebuilt = buildSchema([project]);
 
-    expect(keysAt(rebuilt, 'properties', 'models', 'properties', 'Project', 'properties', 'properties', 'properties'))
-      .toEqual(['description', 'id', 'name', 'profileId', 'type', 'url']);
+    expect(
+      keysAt(
+        rebuilt,
+        'properties',
+        'models',
+        'properties',
+        'Project',
+        'properties',
+        'properties',
+        'properties',
+      ),
+    ).toEqual(['description', 'id', 'name', 'profileId', 'type', 'url']);
   });
 });

@@ -230,9 +230,13 @@ describe('profile query from the assignment', () => {
 
     // The fixture of `insertProfileFixture` carries a skill without a category and a name that
     // sorts before `Zeta`, so an empty category placed first would show up as the wrong head of the
-    // list rather than as a shuffle nobody notices.
-    await prisma.skill.create({
-      data: { profileId: fixture.id, name: 'Zeta', category: 'cms' },
+    // list rather than as a shuffle nobody notices. The skill is a dictionary row, so it is written
+    // with the tie of this profile in one nested create.
+    await prisma.profileSkill.create({
+      data: {
+        profile: { connect: { id: fixture.id } },
+        skill: { create: { name: 'Zeta', category: 'cms' } },
+      },
     });
 
     const response = await graphql<ISkillsData>(

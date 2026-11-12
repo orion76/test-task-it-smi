@@ -134,13 +134,17 @@ describe('nested fields of one request', () => {
     // read would already be visible here.
     expect(profiles[0].skills.length).toBeGreaterThan(1);
 
-    // One page read plus one read per collection: five statements for the whole selection set.
-    expect(calls).toHaveLength(5);
+    // One page read, one read per one-hop collection and two reads per dictionary collection: the
+    // ties and the rows they name. Seven statements for the whole selection set, no matter how many
+    // rows every collection has.
+    expect(calls).toHaveLength(7);
     expect(countByType(calls)).toEqual({
       profile: 1,
       experience: 1,
       project: 1,
+      profileSkill: 1,
       skill: 1,
+      profileSocialLink: 1,
       socialLink: 1,
     });
   });
@@ -154,25 +158,40 @@ describe('nested fields of one request', () => {
     expect(profiles).toHaveLength(3);
 
     // The number of reads per table does not grow with the number of parents: the loaders collect
-    // the requests of the whole tick into one batch per table.
-    expect(calls).toHaveLength(5);
+    // the requests of the whole tick into one batch per table, and a dictionary collection is still
+    // two statements — the ties and the rows — whatever the number of profiles.
+    expect(calls).toHaveLength(7);
     expect(countByType(calls)).toEqual({
       profile: 1,
       experience: 1,
       project: 1,
+      profileSkill: 1,
       skill: 1,
+      profileSocialLink: 1,
       socialLink: 1,
     });
+
+    const tieCall = calls.find((call) => call.type === 'profileSkill');
+    const tieQuery = tieCall?.query;
+
+    if (tieQuery === undefined || !('parentIds' in tieQuery)) {
+      throw new Error('the tie read did not carry the parent ids');
+    }
+
+    // All three parents travel in one query of the tie table, which is what makes the read a batch
+    // and not N+1.
+    expect(tieQuery.parentIds).toHaveLength(3);
+    expect([...tieQuery.parentIds].sort()).toEqual(profiles.map((profile) => profile.id).sort());
 
     const skillCall = calls.find((call) => call.type === 'skill');
     const skillQuery = skillCall?.query;
 
-    if (skillQuery === undefined || !('parentIds' in skillQuery)) {
-      throw new Error('the collection read did not carry the parent ids');
+    if (skillQuery === undefined || !('ids' in skillQuery)) {
+      throw new Error('the dictionary read did not carry the ids of the ties');
     }
 
-    // All three parents travel in one query, which is what makes the read a batch and not N+1.
-    expect(skillQuery.parentIds).toHaveLength(3);
-    expect([...skillQuery.parentIds].sort()).toEqual(profiles.map((profile) => profile.id).sort());
+    // The second read is one query for every dictionary row the ties name, without repeats.
+    expect(skillQuery.ids.length).toBeGreaterThan(3);
+    expect(new Set(skillQuery.ids).size).toBe(skillQuery.ids.length);
   });
 });
