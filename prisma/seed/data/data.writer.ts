@@ -1,12 +1,11 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 
-import type { IModelConfig, ISeedConfig } from '../config/types';
 import { placesOf } from '../schema/model.places';
 import type { IChildSpec, IDataModel, IModelSpec } from '../schema/types';
 import { parseDateValue } from '../shared/date-value.parser';
 import { delegateName } from '../shared/delegate-name';
 import { withContext } from '../shared/error-context';
-import { isRecord, omit } from '../shared/record';
+import { isRecord } from '../shared/record';
 import { SeedError } from '../shared/seed.error';
 import { ID_COLUMN } from './constants';
 import type {
@@ -18,13 +17,12 @@ import type {
   ISeedSummary,
   IWrittenElement,
   TRow,
-  UWriteStrategy,
 } from './types';
 
 /**
  * Writes the validated data file through the model tree of the JSON Schema. The writer knows no
- * property of the domain, keeps no order, and runs the whole file as one transaction — so a failure
- * on any model leaves the database untouched.
+ * property of the domain and keeps no order: it empties the tables of the tree and inserts the file
+ * in one transaction, so a failure on any model leaves the database untouched.
  */
 export class DataWriter implements IDataWriter {
   private readonly reports = new Map<string, IModelReport>();
@@ -33,7 +31,6 @@ export class DataWriter implements IDataWriter {
 
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly config: ISeedConfig,
     private readonly dataModel: IDataModel,
   ) {
     this.byName = new Map(dataModel.models.map((model) => [model.name, model]));
@@ -41,16 +38,16 @@ export class DataWriter implements IDataWriter {
   }
 
   /**
-   * Applies the data file in a single transaction. Safe to run on every container start:
-   * a second run on an existing volume neither duplicates rows nor fails. The root row without a
-   * natural key is replaced, so a restart cannot append another one.
+   * Applies the data file in a single transaction: the tables of the tree are emptied first, then
+   * the root row and its children are inserted. A repeated run on an existing volume therefore
+   * leaves the content of the file in the database instead of appending a second copy.
    */
   async write(source: unknown): Promise<ISeedSummary> {
     const rootValue = this.rootValue(source);
     const { root, property } = this.dataModel;
 
     await this.prisma.$transaction(async (transaction) => {
-      await this.replaceRoot(transaction);
+      await this.clear(transaction);
 
       let element: IWrittenElement;
 
@@ -67,18 +64,13 @@ export class DataWriter implements IDataWriter {
   }
 
   /**
-   * Root of the data file is a single object, so its row is a singleton. Without a natural key it
-   * cannot be matched by `upsert` and `create` would append one row per run, so the previous rows are
-   * removed in the same transaction; the rows of the nested models go with the database cascade.
+   * Empties every table of the tree in the reverse write order, so a child goes before its parent.
+   * The cascade is not used: the engine must not depend on a relation declared in the database.
    */
-  private async replaceRoot(transaction: Prisma.TransactionClient): Promise<void> {
-    const { root } = this.dataModel;
-
-    if (this.configOf(root).key !== undefined) {
-      return;
+  private async clear(transaction: Prisma.TransactionClient): Promise<void> {
+    for (const spec of [...this.dataModel.models].reverse()) {
+      await this.delegateOf(transaction, spec).deleteMany({ where: {} });
     }
-
-    await this.delegateOf(transaction, root).deleteMany({ where: {} });
   }
 
   private rootValue(source: unknown): unknown {
@@ -152,7 +144,6 @@ export class DataWriter implements IDataWriter {
       let element: IWrittenElement;
 
       try {
-        await this.replaceNested(transaction, childSpec, parent);
         element = await this.writeElement(transaction, childSpec, value, parent);
       } catch (error) {
         throw withContext(childPlace, error);
@@ -162,7 +153,7 @@ export class DataWriter implements IDataWriter {
     }
   }
 
-  /** Builds the row of one element and writes it with the strategy its config implies. */
+  /** Builds the row of one element and writes it. */
   private async writeElement(
     transaction: Prisma.TransactionClient,
     spec: IModelSpec,
@@ -223,48 +214,28 @@ export class DataWriter implements IDataWriter {
     }
 
     if (parent !== null) {
-      row[this.foreignKeyOf(spec, parent.model)] = parent.id;
+      row[this.foreignKeyOf(parent.model)] = parent.id;
     }
 
     return row;
   }
 
-  /**
-   * Writes the row with the strategy its config implies and counts it. A row without a natural key
-   * is created only after its previous rows were removed (`replaceRoot`, `replaceNested`,
-   * `writeCollection`), so the count never grows on a repeated run.
-   */
+  /** Inserts the row and counts it: the tables were emptied, so every row is a new one. */
   private async persist(
     transaction: Prisma.TransactionClient,
     spec: IModelSpec,
     item: IPreparedItem,
   ): Promise<TRow> {
-    const config = this.configOf(spec);
-    const delegate = this.delegateOf(transaction, spec);
+    const saved = await this.delegateOf(transaction, spec).create({ data: item.row });
 
-    if (config.key !== undefined) {
-      const saved = await delegate.upsert({
-        where: this.whereOf(config.key, item),
-        create: item.row,
-        update: omit(item.row, config.key),
-      });
-
-      this.count(spec, 'upsert', 1);
-
-      return saved;
-    }
-
-    const saved = await delegate.create({ data: item.row });
-
-    this.count(spec, 'replace', 1);
+    this.count(spec, 1);
 
     return saved;
   }
 
   /**
-   * Writes a collection of a child model. Without a natural key the rows of the parent are removed and
-   * written again in the same transaction, so a second run keeps the row count; with a key the rows are
-   * matched by it and the ones that disappeared from the file are pruned.
+   * Writes a collection of a child model. A model without nested models goes in one `createMany`;
+   * a model with children is written row by row, because every child needs the id of its parent.
    */
   private async writeCollection(
     transaction: Prisma.TransactionClient,
@@ -273,19 +244,6 @@ export class DataWriter implements IDataWriter {
     parent: IParentRef,
   ): Promise<void> {
     const place = this.placeOf(spec);
-    const delegate = this.delegateOf(transaction, spec);
-    const foreignKey = this.foreignKeyOf(spec, parent.model);
-    const key = this.configOf(spec).key;
-
-    if (key === undefined) {
-      await delegate.deleteMany({ where: { [foreignKey]: parent.id } });
-
-      if (values.length === 0) {
-        this.count(spec, 'replace', 0);
-
-        return;
-      }
-    }
 
     const items = values.map((value, index) => {
       try {
@@ -295,19 +253,16 @@ export class DataWriter implements IDataWriter {
       }
     });
 
-    if (key === undefined && spec.children.length === 0) {
-      await delegate.createMany({ data: items.map((item) => item.row) });
-      this.count(spec, 'replace', items.length);
+    if (spec.children.length === 0) {
+      const data = items.map((item) => item.row);
+
+      if (data.length > 0) {
+        await this.delegateOf(transaction, spec).createMany({ data });
+      }
+
+      this.count(spec, data.length);
 
       return;
-    }
-
-    if (key !== undefined) {
-      try {
-        await this.prune(delegate, key, foreignKey, parent.id, items);
-      } catch (error) {
-        throw withContext(`${place} — model ${spec.name}`, error);
-      }
     }
 
     for (const [index, item] of items.entries()) {
@@ -321,26 +276,6 @@ export class DataWriter implements IDataWriter {
 
       await this.writeChildren(transaction, spec, item, saved);
     }
-  }
-
-  /**
-   * Nested object is a singleton of its parent, as the root is a singleton of the file: without a
-   * natural key the previous row of this parent is removed before the new one is created, so a
-   * repeated run does not append a copy.
-   */
-  private async replaceNested(
-    transaction: Prisma.TransactionClient,
-    spec: IModelSpec,
-    parent: IParentRef,
-  ): Promise<void> {
-    if (this.configOf(spec).key !== undefined) {
-      return;
-    }
-
-    const delegate = this.delegateOf(transaction, spec);
-    const foreignKey = this.foreignKeyOf(spec, parent.model);
-
-    await delegate.deleteMany({ where: { [foreignKey]: parent.id } });
   }
 
   /** Value of the child property, or `undefined` when an optional property is absent. */
@@ -360,56 +295,6 @@ export class DataWriter implements IDataWriter {
     return value[child.property];
   }
 
-  /** Removes the rows of the parent whose natural key is not present in the file. */
-  private async prune(
-    delegate: IDelegate,
-    key: string[],
-    foreignKey: string,
-    parentId: unknown,
-    items: IPreparedItem[],
-  ): Promise<void> {
-    const where: TRow = { [foreignKey]: parentId };
-
-    if (items.length > 0) {
-      where.NOT = { OR: items.map((item) => this.keyOf(key, item)) };
-    }
-
-    await delegate.deleteMany({ where });
-  }
-
-  /** Key columns and their values for one element. */
-  private keyOf(key: string[], item: IPreparedItem): TRow {
-    const values: TRow = {};
-
-    for (const column of key) {
-      const value = item.row[column];
-
-      if (value === undefined) {
-        throw new SeedError(
-          `key column "${column}" has no value; the JSON Schema does not provide it, ` +
-            'so it has to be declared in the seed config',
-        );
-      }
-
-      values[column] = value;
-    }
-
-    return values;
-  }
-
-  /** `where` clause of the upsert: a single column or a compound unique key. */
-  private whereOf(key: string[], item: IPreparedItem): TRow {
-    const values = this.keyOf(key, item);
-
-    if (key.length === 1) {
-      const [column] = key;
-
-      return { [column]: values[column] };
-    }
-
-    return { [key.join('_')]: values };
-  }
-
   /** Id of the saved row, needed by the models nested in it. */
   private idOf(saved: TRow): unknown {
     const id = saved[ID_COLUMN];
@@ -423,23 +308,9 @@ export class DataWriter implements IDataWriter {
     return id;
   }
 
-  /**
-   * Column that stores the parent id. The config declares it; without the config the name is
-   * derived from the parent model name (`Profile` → `profile` + `Id`), which keeps the
-   * schema-only mode working for conventionally named relations.
-   */
-  private foreignKeyOf(spec: IModelSpec, parentModel: string): string {
-    const configured = this.configOf(spec).foreignKey;
-
-    if (configured !== undefined) {
-      return configured;
-    }
-
+  /** Column that stores the parent id, derived from the parent model name (`Profile` → `profileId`). */
+  private foreignKeyOf(parentModel: string): string {
     return `${delegateName(parentModel)}Id`;
-  }
-
-  private configOf(spec: IModelSpec): IModelConfig {
-    return this.config.models[spec.name] ?? {};
   }
 
   private modelOf(name: string): IModelSpec {
@@ -461,27 +332,23 @@ export class DataWriter implements IDataWriter {
     return this.places.get(spec.name) ?? spec.name;
   }
 
-  /** Prisma delegate of the model; `model` in the config overrides the name from the schema. */
+  /** Prisma delegate of the model, addressed by the delegate name of its schema name. */
   private delegateOf(transaction: Prisma.TransactionClient, spec: IModelSpec): IDelegate {
-    const modelName = this.configOf(spec).model ?? spec.name;
-    const name = delegateName(modelName);
+    const name = delegateName(spec.name);
     const delegate: unknown = (transaction as unknown as Record<string, unknown>)[name];
 
     if (typeof delegate !== 'object' || delegate === null) {
-      throw new SeedError(
-        `model ${spec.name} — the Prisma client has no delegate "${name}"; ` +
-          'check the "model" override in the seed config',
-      );
+      throw new SeedError(`model ${spec.name} — the Prisma client has no delegate "${name}"`);
     }
 
     return delegate as IDelegate;
   }
 
-  private count(spec: IModelSpec, strategy: UWriteStrategy, written: number): void {
+  private count(spec: IModelSpec, written: number): void {
     const report = this.reports.get(spec.name);
 
     if (report === undefined) {
-      this.reports.set(spec.name, { model: spec.name, strategy, written });
+      this.reports.set(spec.name, { model: spec.name, written });
 
       return;
     }

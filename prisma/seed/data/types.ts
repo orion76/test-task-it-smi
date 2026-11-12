@@ -2,8 +2,6 @@
 export interface IModelReport {
   /** Model name from the schema. */
   model: string;
-  /** How the model was written: matched by its natural key, or replaced as a whole. */
-  strategy: 'upsert' | 'replace';
   written: number;
 }
 
@@ -32,17 +30,10 @@ export interface IWrittenElement {
   saved: TRow;
 }
 
-/**
- * How a model is written. A model without a natural key is always replaced, never appended:
- * the engine keeps row counts stable between runs, which matters when the container restarts.
- */
-export type UWriteStrategy = 'upsert' | 'replace';
-
 /** The part of a Prisma model delegate the engine uses. */
 export interface IDelegate {
   create(args: { data: TRow }): Promise<TRow>;
   createMany(args: { data: TRow[] }): Promise<{ count: number }>;
-  upsert(args: { where: TRow; create: TRow; update: TRow }): Promise<TRow>;
   deleteMany(args: { where: TRow }): Promise<{ count: number }>;
 }
 
@@ -79,14 +70,14 @@ export interface IDataValidator {
 }
 
 /**
- * Contract of the writer: the entry point applies the document and reads back the report of what was
- * written, without knowing the strategies or the model tree behind them.
+ * Contract of the writer: the entry point applies the document and reads back how many rows each
+ * model got, without knowing the model tree behind them.
  */
 export interface IDataWriter {
   /**
-   * Applies the data file in a single transaction. Safe to run on every container start:
-   * a second run on an existing volume neither duplicates rows nor fails. The root row without a
-   * natural key is replaced, so a restart cannot append another one.
+   * Applies the data file in a single transaction: the tables of the tree are emptied and the file
+   * is inserted, so a repeated run on an existing volume leaves the content of the file in the
+   * database instead of appending a second copy.
    */
   write(source: unknown): Promise<ISeedSummary>;
 }

@@ -10,8 +10,8 @@ import type { ErrorObject, Options } from 'ajv';
 export type TDescribeErrors = (errors: ErrorObject[], file: string) => string;
 
 /**
- * Options of a `loadConfig` call: where the search for the project root starts, how far it may go,
- * whether the document is validated and whether a missing file is an error.
+ * Options of a `loadConfig` call: where the search for the project root starts, how far it may go
+ * and whether the document is validated.
  */
 export interface ILoadConfigOptions {
   /**
@@ -47,12 +47,4 @@ export interface ILoadConfigOptions {
   formats?: boolean;
   /** Replaces the default message; receives the AJV errors and the file name. */
   describeErrors?: TDescribeErrors;
-  /**
-   * Treats a missing file as a normal state instead of an error: the call then returns `undefined`.
-   *
-   * The seed config is the case the mode exists for — `config/seed.config.yml` may be absent, and the
-   * seed engine then follows the JSON Schema alone. Only a missing file (`ENOENT`) is swallowed; a
-   * file that exists but cannot be read or parsed is still an error.
-   */
-  optional?: boolean;
 }

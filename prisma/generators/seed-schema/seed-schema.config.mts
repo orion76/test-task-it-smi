@@ -57,8 +57,8 @@ const config = {
 
   // Доменные ограничения поверх выведенных правил: по модели (`Skill`) и по полю (`Profile.slug`).
   overrides: {
-    // Модель: описание импорта дополняет `///` из `schema.prisma`. Натуральный ключ идемпотентной
-    // записи — факт сидинга (`config/seed.config.yml`), в схеме БД его нет, поэтому он здесь.
+    // Модель: описание импорта дополняет `///` из `schema.prisma`. Пару `profileId` + `name` БД
+    // держит уникальной (`@@unique`), поэтому описание импорта называет `name` ключом.
     Skill: {
       description:
         'Skill of the business card. `name` is the natural key of the idempotent upsert ' +

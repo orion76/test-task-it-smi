@@ -1,8 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 
-import { assertModelsKnown } from './config/models.check';
-import { loadSeedConfig } from './config/seed-config.reader';
-import type { ISeedConfig } from './config/types';
 import { DataReader } from './data/data.reader';
 import { DataValidator } from './data/data.validator';
 import { DataWriter } from './data/data.writer';
@@ -11,24 +8,25 @@ import type { IDataValidator, ISeedSummary } from './data/types';
 import { buildDataModel } from './schema/data.model';
 import { readSchema } from './schema/schema.reader';
 import type { IDataModel } from './schema/types';
+import { DATA_FILE, SCHEMA_FILE } from './shared/constants';
 import { withContext } from './shared/error-context';
 import { toErrorMessage } from './shared/error-message';
 import { toDisplayPath } from './shared/path';
 
 /**
- * Seed entry point: config → schema → read the data file → validate → check the domain rules →
- * write. The engine knows nothing about the content, and this is the only place where the paths of
- * the inputs are known, so it prefixes the file path to the location inside the file — once per
+ * Seed entry point: schema → read the data file → validate → check the domain rules → write.
+ * The engine knows nothing about the content, and this is the only place where the paths of the
+ * inputs are known, so it prefixes the file path to the location inside the file — once per
  * failure.
  */
 
 async function main(): Promise<void> {
-  const config = loadSeedConfig();
-  const schemaPath = toDisplayPath(config.schemaPath);
+  const schemaPath = toDisplayPath(SCHEMA_FILE);
+  const reader = new DataReader(DATA_FILE);
 
-  logConfig(config);
+  console.log(`Seed inputs: data ${reader.path}, schema ${schemaPath}`);
 
-  const schema = readSchema(config.schemaPath);
+  const schema = readSchema(SCHEMA_FILE);
   let dataModel: IDataModel;
 
   try {
@@ -37,9 +35,6 @@ async function main(): Promise<void> {
     throw withContext(schemaPath, error);
   }
 
-  assertModelsKnown(config, dataModel);
-
-  const reader = new DataReader(config.dataPath);
   const source = reader.read();
 
   let validator: IDataValidator;
@@ -65,7 +60,7 @@ async function main(): Promise<void> {
   }
 
   const prisma = new PrismaClient();
-  const writer = new DataWriter(prisma, config, dataModel);
+  const writer = new DataWriter(prisma, dataModel);
 
   try {
     const summary = await writer.write(source);
@@ -78,32 +73,9 @@ async function main(): Promise<void> {
   }
 }
 
-/** One line per model: the rows it got and the strategy they were written with. */
+/** One line per model: the rows it got. */
 function describe(summary: ISeedSummary): string {
-  return summary.models
-    .map((model) => `${model.model}: ${model.written} (${model.strategy})`)
-    .join(', ');
-}
-
-/**
- * Reports which inputs the run uses and how the models are written. A missing config is a valid
- * mode, so it is announced instead of being silently replaced by defaults.
- */
-function logConfig(config: ISeedConfig): void {
-  // The defaults are absolute paths into `config/` at the project root: display them the way the
-  // rest of the seed reports its inputs (relative to the working directory when possible).
-  const configPath = toDisplayPath(config.configPath);
-  const schemaPath = toDisplayPath(config.schemaPath);
-
-  console.log(`Seed config ${configPath}: data ${config.dataPath}, schema ${schemaPath}`);
-
-  if (config.source === 'defaults') {
-    console.warn(
-      `Seed config ${configPath} not found: only the JSON Schema rules apply, ` +
-        'every model is written with the replace strategy (the root is replaced, not appended), ' +
-        'no natural keys are used and foreign keys are derived from the parent model name',
-    );
-  }
+  return summary.models.map((model) => `${model.model}: ${model.written}`).join(', ');
 }
 
 void main().catch((error: unknown) => {

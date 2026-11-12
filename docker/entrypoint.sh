@@ -9,8 +9,9 @@ set -e
 echo "==> prisma migrate deploy"
 ./node_modules/.bin/prisma migrate deploy
 
-# 2. Идемпотентный сидинг из data/profile.yml. Скрипт собран в dist вместе с приложением,
-#    поэтому ts-node в runtime-образе не нужен. Повторный запуск не создаёт дублей.
+# 2. Сидинг из data/profile.yml: доменные таблицы очищаются и наполняются заново, поэтому
+#    повторный запуск не создаёт дублей. Скрипт собран в dist вместе с приложением,
+#    поэтому ts-node в runtime-образе не нужен.
 echo "==> seed (dist/prisma/seed/main.js)"
 node dist/prisma/seed/main.js
 

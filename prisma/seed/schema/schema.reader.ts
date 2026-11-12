@@ -6,8 +6,8 @@ import { isJsonSchema } from './json-schema';
 import type { IJsonSchema } from './types';
 
 /**
- * Reads the JSON Schema from disk. The file is YAML, like every project config; the path comes
- * from the seed config, not from an import.
+ * Reads the JSON Schema from disk. The file is YAML, like every project config; the path is the
+ * constant of the seed (`SCHEMA_FILE`), not an import.
  *
  * `yaml-loader` reads and parses the file (and names it in its errors); the shape is checked here,
  * because "a JSON Schema is an object" is a rule about the content, not about YAML.

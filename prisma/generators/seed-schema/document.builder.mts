@@ -55,7 +55,7 @@ function buildDocument(datamodel: DMMF.Datamodel): TSchemaFragment {
 
 /**
  * Builds `$defs` for every model, keyed by the delegate name of the model (`SocialLink` →
- * `socialLink`): the same spelling the seed config uses for the model names.
+ * `socialLink`): the same spelling the Prisma client uses for the model names.
  *
  * @param models models of the DMMF datamodel
  * @param enums values of every enum, keyed by the enum name
