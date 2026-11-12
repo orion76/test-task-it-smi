@@ -7,7 +7,7 @@ export interface IObjectSchema extends TSchemaNode {
 }
 
 /** Tie table of a collection: the model that stores the pair and the columns of the two identifiers. */
-export interface IThroughLink {
+interface IThroughLink {
   model: string;
   parent: string;
   target: string;

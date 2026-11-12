@@ -54,6 +54,11 @@ export class DataWriter implements IDataWriter {
     const rootValue = this.rootValue(source);
     const { root, property } = this.dataModel;
 
+    // The maps describe this run only: a second `write()` on the same instance starts from the
+    // emptied tables, so the identifiers of the previous run are stale and the counters start over.
+    this.dictionaryIds.clear();
+    this.reports.clear();
+
     await this.prisma.$transaction(async (transaction) => {
       await this.clear(transaction);
 

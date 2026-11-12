@@ -1,7 +1,7 @@
 /**
  * Tie table of a dictionary: the model that stores the pair, and the columns of the two identifiers.
  */
-export interface IDictionaryLink {
+interface IDictionaryLink {
   model: string;
   parent: string;
   target: string;

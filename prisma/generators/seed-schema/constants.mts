@@ -39,7 +39,7 @@ export const CONFIG_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /** Keys one entry of the `dictionaries` block may contain. */
-export const DICTIONARY_KEYS: ReadonlySet<string> = new Set(['key', 'link']);
+export const DICTIONARY_KEYS: ReadonlySet<string> = new Set(['key', 'property', 'link']);
 
 /** Keys of the `link` block of one dictionary: the tie table and the two columns it stores. */
 export const DICTIONARY_LINK_KEYS: ReadonlySet<string> = new Set(['model', 'parent', 'target']);

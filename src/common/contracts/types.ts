@@ -25,7 +25,7 @@ export interface IEntity {
 export type UEntityReference = IDirectReference | IThroughReference;
 
 /** A relation read through a column of one of the two rows. */
-export interface IDirectReference {
+interface IDirectReference {
   /** Entity the relation points at, named as the Prisma delegate is (`socialLink`, `profile`, …). */
   readonly entity: string;
   /** Column of the row that stores the identifier of the related entity (`profileId`). */

@@ -104,11 +104,9 @@ export function groupRowsByParent(
 
 /**
  * Rows of a collection read through a tie table, grouped by the parent the tie names, in the order
- * they arrived.
- *
- * The tie rows carry the membership, and the rows of the collection are read by the order of the
- * contract, so the subsequence of one parent is already sorted: nothing is sorted here, and a parent
- * is never asked for its own query. A tie that names no parent or no row is dropped.
+ * they arrived. The tie rows carry the membership and the collection rows are read by the order of
+ * the contract, so the subsequence of one parent is already sorted: nothing is sorted here and a
+ * parent is never asked for its own query. A tie that names no parent or row is dropped.
  *
  * @param rows rows of the collection, in the order of the second query
  * @param links rows of the tie table

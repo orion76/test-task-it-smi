@@ -23,16 +23,34 @@ export interface IDictionaryLink {
 
 /**
  * One entry of the `dictionaries` block of the config: a model whose rows are shared between parents,
- * the column that identifies a row, and the table that ties it to the parent.
+ * the column that identifies a row, the property of the parent that nests it, and the table that ties
+ * the two rows.
  */
+export interface IDictionaryConfig {
+  key: string;
+  property: string;
+  link: IDictionaryLink;
+}
+
+/**
+ * A dictionary resolved against the datamodel: the model name, the parent model and the entry of the
+ * config.
+ */
+export interface IDictionarySpec extends IDictionaryConfig {
+  model: string;
+  parent: string;
+}
+
+/** One entry of the `config/dictionaries.yml` artifact: the part the seed reads. */
 export interface IDictionaryEntry {
   key: string;
   link: IDictionaryLink;
 }
 
-/** A dictionary resolved against the datamodel: the model name and the entry of the config. */
-export interface IDictionarySpec extends IDictionaryEntry {
-  model: string;
+/** Tie table of a dictionary resolved against the datamodel, with the model that lists it. */
+export interface IResolvedLink {
+  parent: string;
+  link: IDictionaryLink;
 }
 
 /** Config of the `prisma/generators/seed-schema/seed-schema.generator.mts` generator. */
@@ -42,7 +60,7 @@ export interface ISeedSchemaConfig {
   omit: string[];
   definitions: Record<string, TSchemaFragment>;
   overrides: Record<string, TSchemaFragment>;
-  dictionaries: Record<string, IDictionaryEntry>;
+  dictionaries: Record<string, IDictionaryConfig>;
 }
 
 /** Fragments of the config, split by what they annotate. */

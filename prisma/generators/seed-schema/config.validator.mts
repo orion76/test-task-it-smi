@@ -61,7 +61,7 @@ export function assertConfig(): void {
   assertDictionaries();
 }
 
-/** Checks the `dictionaries` block: model names, each with a key and a tie table of two columns. */
+/** Checks the `dictionaries` block: model names, each with a key, a property and a tie table. */
 function assertDictionaries(): void {
   if (!isMapping(config.dictionaries)) {
     failConfig('dictionaries: expected a mapping of model names to their key and tie table');
@@ -74,6 +74,10 @@ function assertDictionaries(): void {
 
     if (typeof entry.key !== 'string' || entry.key.length === 0) {
       failConfig(`${place}.key: expected the column that identifies a row of the dictionary`);
+    }
+
+    if (typeof entry.property !== 'string' || entry.property.length === 0) {
+      failConfig(`${place}.property: expected the property of the parent that nests the dictionary`);
     }
 
     assertKnownKeys(`${place}.link`, entry.link, DICTIONARY_LINK_KEYS);

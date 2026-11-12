@@ -3,15 +3,21 @@
  *
  * A dictionary is a model whose rows are shared between parents: the import file nests the values
  * under the parent, and the engine writes one row per key value plus one row of the tie table per
- * parent. The config names the model, its key and the tie table; every name is checked here, so a typo
- * fails the generation instead of producing a file the engine cannot write.
+ * parent. The config names the model, its key, the property of the parent and the tie table; every
+ * name is checked here, so a typo fails the generation instead of producing a file the engine cannot
+ * write.
  */
 import type { DMMF } from '@prisma/generator-helper';
 
 import { compare } from '../shared/dmmf.mts';
 import config from './seed-schema.config.mts';
 import { failConfig } from './shared/errors.mts';
-import type { IDictionaryEntry, IDictionaryLink, IDictionarySpec } from './types.mts';
+import type {
+  IDictionaryConfig,
+  IDictionaryLink,
+  IDictionarySpec,
+  IResolvedLink,
+} from './types.mts';
 
 /**
  * Dictionaries of the config, resolved against the datamodel.
@@ -24,7 +30,26 @@ export function dictionarySpecs(models: readonly DMMF.Model[]): IDictionarySpec[
     dictionaryOf(modelName, entry, models),
   );
 
+  assertDistinctProperties(specs);
+
   return specs.sort((left, right) => compare(left.model, right.model));
+}
+
+/**
+ * Dictionaries the import file nests under one model, in property-name order: the order of the
+ * collections in the file does not follow the declaration order of their tie tables.
+ *
+ * @param model model whose collections are described
+ * @param specs dictionaries of the config
+ * @returns the dictionaries nested under the model
+ */
+export function dictionariesOf(
+  model: DMMF.Model,
+  specs: readonly IDictionarySpec[],
+): IDictionarySpec[] {
+  return specs
+    .filter((spec) => spec.parent === model.name)
+    .sort((left, right) => compare(left.property, right.property));
 }
 
 /**
@@ -48,7 +73,7 @@ export function linkModelNames(specs: readonly IDictionarySpec[]): ReadonlySet<s
  */
 function dictionaryOf(
   modelName: string,
-  entry: IDictionaryEntry,
+  entry: IDictionaryConfig,
   models: readonly DMMF.Model[],
 ): IDictionarySpec {
   const model = models.find((candidate) => candidate.name === modelName);
@@ -58,8 +83,56 @@ function dictionaryOf(
   }
 
   assertKey(model, entry.key);
+  const resolved = linkOf(model, entry, models);
 
-  return { model: modelName, key: entry.key, link: linkOf(model, entry.link, models) };
+  return {
+    model: modelName,
+    key: entry.key,
+    property: entry.property,
+    parent: resolved.parent,
+    link: resolved.link,
+  };
+}
+
+/**
+ * Checks that the property the file nests the dictionary under is not taken by a column of the
+ * parent: a clash would silently replace the column with the collection.
+ *
+ * @param dictionary name of the dictionary, for the message
+ * @param property property of the parent the file nests the collection under
+ * @param parent model that lists the dictionary
+ */
+function assertPropertyFree(dictionary: string, property: string, parent: DMMF.Model): void {
+  const field = parent.fields.find((candidate) => candidate.name === property);
+
+  if (field !== undefined) {
+    failConfig(
+      `dictionaries.${dictionary}.property: "${property}" is a field of "${parent.name}", ` +
+        'so the collection would replace it',
+    );
+  }
+}
+
+/**
+ * Checks that two dictionaries are not nested under the same property of one parent: the second
+ * would silently replace the first.
+ *
+ * @param specs dictionaries of the config
+ */
+function assertDistinctProperties(specs: readonly IDictionarySpec[]): void {
+  const seen = new Set<string>();
+
+  for (const spec of specs) {
+    const key = `${spec.parent}.${spec.property}`;
+
+    if (seen.has(key)) {
+      failConfig(
+        `dictionaries.${spec.model}.property: "${key}" is already nested by another dictionary`,
+      );
+    }
+
+    seen.add(key);
+  }
 }
 
 /**
@@ -84,37 +157,43 @@ function assertKey(model: DMMF.Model, key: string): void {
  * Tie table of one dictionary, with the inverse collections both sides have to declare.
  *
  * @param dictionary dictionary model
- * @param entry `link` block of the config
+ * @param entry `dictionaries` entry of the config
  * @param models models of the DMMF datamodel
- * @returns the tie table with the columns the datamodel declares
+ * @returns the tie table, the columns it stores and the parent model it ties to
  */
 function linkOf(
   dictionary: DMMF.Model,
-  entry: IDictionaryLink,
+  entry: IDictionaryConfig,
   models: readonly DMMF.Model[],
-): IDictionaryLink {
-  const link = models.find((candidate) => candidate.name === entry.model);
+): IResolvedLink {
+  const link = models.find((candidate) => candidate.name === entry.link.model);
 
   if (link === undefined) {
     failConfig(
-      `dictionaries.${dictionary.name}.link.model: the datamodel has no model "${entry.model}"`,
+      `dictionaries.${dictionary.name}.link.model: the datamodel has no model ` +
+        `"${entry.link.model}"`,
     );
   }
 
-  const parent = relationOf(link, entry.parent, dictionary.name, 'parent');
-  const target = relationOf(link, entry.target, dictionary.name, 'target');
+  const parent = relationOf(link, entry.link.parent, dictionary.name, 'parent');
+  const target = relationOf(link, entry.link.target, dictionary.name, 'target');
 
   if (target.type !== dictionary.name) {
     failConfig(
-      `dictionaries.${dictionary.name}.link.target: "${entry.target}" points at "${target.type}", ` +
-        'not at the dictionary',
+      `dictionaries.${dictionary.name}.link.target: "${entry.link.target}" points at ` +
+        `"${target.type}", not at the dictionary`,
     );
   }
 
   assertListRelation(dictionary, link.name, `dictionaries.${dictionary.name}`);
-  assertParentInverse(parent.type, dictionary.name, models, entry);
+  const parentModel = assertParentInverse(parent.type, dictionary.name, models, entry.link);
 
-  return { model: link.name, parent: entry.parent, target: entry.target };
+  assertPropertyFree(dictionary.name, entry.property, parentModel);
+
+  return {
+    parent: parentModel.name,
+    link: { model: link.name, parent: entry.link.parent, target: entry.link.target },
+  };
 }
 
 /**
@@ -172,13 +251,14 @@ function assertListRelation(model: DMMF.Model, link: string, place: string): voi
  * @param dictionary name of the dictionary model, for the message
  * @param models models of the DMMF datamodel
  * @param entry `link` block of the config, for the message
+ * @returns the parent model that lists the dictionary
  */
 function assertParentInverse(
   parentName: string,
   dictionary: string,
   models: readonly DMMF.Model[],
   entry: IDictionaryLink,
-): void {
+): DMMF.Model {
   const parent = models.find((candidate) => candidate.name === parentName);
   const place = `dictionaries.${dictionary}.link.parent`;
 
@@ -196,4 +276,6 @@ function assertParentInverse(
         `"${entry.model}" — the tie table has no inverse side`,
     );
   }
+
+  return parent;
 }
