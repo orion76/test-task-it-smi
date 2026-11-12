@@ -138,7 +138,7 @@ describe('placement of types', () => {
 
   it('treats generated code, ambient declarations and specs as out of the rule', () => {
     expect(isExempt('src/generated/graphql/entities/profile.ts')).toBe(true);
-    expect(isExempt('src/modules/health/health.types.ts')).toBe(true);
+    expect(isExempt('src/features/health/types.ts')).toBe(true);
     expect(isExempt('src/graphql/loaders/types.ts')).toBe(true);
     expect(isExempt('src/graphql/loaders/types.mts')).toBe(true);
     expect(isExempt('src/common/contracts/types/entity.ts')).toBe(true);

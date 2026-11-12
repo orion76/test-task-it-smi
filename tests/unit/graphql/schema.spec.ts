@@ -9,7 +9,7 @@ import { GraphQLSchemaBuilderModule, GraphQLSchemaFactory } from '@nestjs/graphq
 import { lexicographicSortSchema, printSchema } from 'graphql';
 
 import { SCHEMA_RESOLVERS } from '@src/graphql/constants';
-import { HealthResolver } from '@src/modules/health/health.resolver';
+import { HealthResolver } from '@src/features/health/health.resolver';
 
 /**
  * The committed SDL is a build artifact of the resolvers alone: the application no longer writes it

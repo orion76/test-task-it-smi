@@ -8,7 +8,7 @@ import { DbModule } from './db/db.module';
 import { PrismaModule } from './db/prisma/prisma.module';
 import { SANDBOX_PLUGINS } from './graphql/constants';
 import { GraphqlApiModule } from './graphql/graphql-api.module';
-import { HealthModule } from './modules/health/health.module';
+import { HealthModule } from './features/health/health.module';
 
 /**
  * Root module: configuration, database, GraphQL API and healthcheck.

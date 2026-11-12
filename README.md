@@ -57,7 +57,7 @@ GraphQL с Apollo Sandbox на `/graphql` и healthcheck на `/health`.
 | `src/db/` | Prisma-клиент, репозиторий, построение аргументов чтения |
 | `src/graphql/` | поведение запросов, загрузчики, регистрация резолверов |
 | `src/generated/` | артефакты генерации — руками не править |
-| `src/modules/health/` | HTTP и GraphQL проверки живости |
+| `src/features/health/` | HTTP и GraphQL проверки живости |
 | `prisma/` | схема, миграции, сидинг, генераторы, скрипты пост-обработки |
 | `config/` | YAML: контракт API, схемы, конфигурация сидинга |
 | `data/` | контент визитки |
@@ -81,7 +81,7 @@ GraphQL с Apollo Sandbox на `/graphql` и healthcheck на `/health`.
 | Генерация | Артефакты из схемы и контракта | `prisma/generators/` |
 | Доступ к данным | Чтение строк через порт | `src/db/`, `src/common/contracts/` |
 | GraphQL-слой | Запросы, связи, батчинг, Sandbox | `src/graphql/`, `src/generated/` |
-| Health | Проверка живости двумя входами | `src/modules/health/` |
+| Health | Проверка живости двумя входами | `src/features/health/` |
 | Сборка и Docker | Образ, entrypoint, запуск | `Dockerfile`, `docker/` |
 | Клиент проверки | Angular-страница проверки | `client/` |
 | Качество | Тесты, линт, границы, инварианты | `eslint.config.mjs`, `tests/` |
@@ -195,7 +195,7 @@ profile(): Promise<IEntity> {
 - Резолвер зарегистрирован в `HealthModule`, а не в `SCHEMA_RESOLVERS`: `graphql` не имеет права
   импортировать feature-модуль, поэтому регистрация остаётся там, где объявлен резолвер.
 
-Файлы: `src/modules/health/`, `Dockerfile`.
+Файлы: `src/features/health/`, `Dockerfile`.
 
 ### 9. Сборка и Docker
 
