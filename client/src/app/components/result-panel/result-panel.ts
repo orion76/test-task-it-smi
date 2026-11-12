@@ -1,8 +1,17 @@
 import { JsonPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import type { IOperationResult, IOperationState } from '../../types';
-import { STATUS_LABELS } from '../constants';
+import type { IOperationResult, IOperationState, UOperationStatus } from '../../types';
 import type { IResultPanel } from '../types';
+
+
+/** Label of every status, shown next to the heading of the result panel. */
+const STATUS_LABELS: Record<UOperationStatus, string> = {
+  idle: 'ожидание',
+  loading: 'выполняется',
+  success: 'успех',
+  error: 'ошибка',
+};
+
 
 /**
  * Status, duration and the raw answer. The JSON is shown as is: the panel is a checking tool, so a

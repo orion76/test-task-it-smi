@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   HEALTH_QUERY,
@@ -9,8 +9,35 @@ import {
 import { toErrorMessage } from '../../api/error.message';
 import { parseCustomRequest, parsePageParams } from '../../api/request.parser';
 import type { IOperationRequest, UOperationName } from '../../types';
-import { PRESETS } from '../constants';
-import type { IOperationPanel } from '../types';
+import type { IOperationPanel, IPreset } from '../types';
+import { gql } from 'apollo-angular';
+
+const PRESETS: IPreset[] = [
+  {
+    name: 'health',
+    label: 'health',
+    hint: 'health { status } — готовность бэкенда.',
+    query: HEALTH_QUERY
+  },
+  {
+    name: 'profile',
+    label: 'profile',
+    hint: 'Профиль со всеми вложенными коллекциями: links, skills, experience, projects.',
+    query: PROFILE_QUERY
+  },
+  {
+    name: 'profiles',
+    label: 'profiles',
+    hint: 'Страница профилей: limit в диапазоне 1..100 и offset.',
+    query: PROFILES_QUERY
+  },
+  {
+    name: 'custom',
+    label: 'свой запрос',
+    hint: 'Любой документ GraphQL и переменные JSON; документ из TZ уже подставлен.',
+    query: TZ_EXAMPLE_QUERY
+  },
+];
 
 /**
  * Builds the request of the selected preset or of the free-form editor. Input that cannot become a
@@ -32,13 +59,21 @@ export class OperationPanel implements IOperationPanel {
   readonly operation = signal<UOperationName>('health');
   readonly limit = signal('10');
   readonly offset = signal('0');
-  readonly documentSource = signal(TZ_EXAMPLE_QUERY);
+  // readonly documentSource = signal(TZ_EXAMPLE_QUERY);
   readonly variablesSource = signal('{}');
 
+  readonly preset = computed(() => {
+    return this.presets.find((entry) => entry.name === this.operation());
+  })
+
   readonly hint = computed(() => {
-    const preset = this.presets.find((entry) => entry.name === this.operation());
-    return preset === undefined ? '' : preset.hint;
+    return this.preset()?.hint ?? '';
   });
+
+  readonly documentSource = linkedSignal(() => {
+    return this.preset()?.query ?? '';
+  });
+
 
   submit(): void {
     try {
@@ -49,13 +84,13 @@ export class OperationPanel implements IOperationPanel {
       if (this.operation() === 'profiles') {
         const page = parsePageParams(this.limit(), this.offset());
         this.run.emit({
-          document: PROFILES_QUERY,
+          document: gql`${PROFILES_QUERY}`,
           variables: { limit: page.limit, offset: page.offset },
         });
         return;
       }
       this.run.emit({
-        document: this.operation() === 'profile' ? PROFILE_QUERY : HEALTH_QUERY,
+        document: gql`${this.operation() === 'profile' ? PROFILE_QUERY : HEALTH_QUERY}`,
         variables: {},
       });
     } catch (error) {

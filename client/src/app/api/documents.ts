@@ -5,7 +5,7 @@ import { gql } from 'apollo-angular';
  * (`config/api-fields.yml`). The fragment is shared by the single-profile and the page queries, so
  * both show the same selection and the nested collections are resolved by the backend loaders.
  */
-const PROFILE_FIELDS = gql`
+const PROFILE_FIELDS = `
   fragment ProfileFields on Profile {
     id
     name
@@ -40,7 +40,7 @@ const PROFILE_FIELDS = gql`
 `;
 
 /** `health { status }` — the readiness check of the backend. */
-export const HEALTH_QUERY = gql`
+export const HEALTH_QUERY = `
   query Health {
     health {
       status
@@ -49,7 +49,7 @@ export const HEALTH_QUERY = gql`
 `;
 
 /** The profile with every nested collection; a 404 comes back as a GraphQL error. */
-export const PROFILE_QUERY = gql`
+export const PROFILE_QUERY = `
   query Profile {
     profile {
       ...ProfileFields
@@ -59,7 +59,7 @@ export const PROFILE_QUERY = gql`
 `;
 
 /** One page of profiles: `limit` is 1..100 on the server, the page starts at `offset`. */
-export const PROFILES_QUERY = gql`
+export const PROFILES_QUERY = `
   query Profiles($limit: Int!, $offset: Int!) {
     profiles(limit: $limit, offset: $offset) {
       ...ProfileFields

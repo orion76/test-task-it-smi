@@ -49,6 +49,19 @@ input {
   font-weight: 600;
 }
 
+.page__body{
+  display: flex;
+  gap: 1rem;
+}
+
+.page__body .content{
+  flex: 2;
+}
+
+.page__body .side-right{
+  flex: 1;
+}
+
 .endpoint {
   margin: 0;
   color: var(--muted);
@@ -70,18 +83,20 @@ input {
 }
 
 .panel__title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 16px;
   font-weight: 600;
 }
-
+.panel__header{
+  display: flex;
+  gap: 1rem;
+  justify-content:space-between;
+}
 .presets {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 1rem;;
 }
 
 .preset {
@@ -111,9 +126,13 @@ input {
 }
 
 .page-params {
-  display: flex;
-  gap: 16px;
   margin-top: 12px;
+}
+
+
+.page-params .form-fields{
+  display: flex;
+  gap: 1rem;
 }
 
 .field {
@@ -126,6 +145,10 @@ input {
 
 .field--wide {
   margin-top: 12px;
+}
+
+.field--number{
+  max-width: 5rem;
 }
 
 .field input,
@@ -149,7 +172,6 @@ input {
 }
 
 .run {
-  margin-top: 16px;
   border: 1px solid var(--accent);
   background: var(--accent);
   color: #ffffff;
@@ -251,7 +273,7 @@ input {
 
 .json {
   margin: 0;
-  max-height: 480px;
+  max-height: 360px;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 6px;

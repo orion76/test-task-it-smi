@@ -12,6 +12,7 @@ export interface IPreset {
   name: UOperationName;
   label: string;
   hint: string;
+  query: string;
 }
 
 /** One `links` item of the profile. */
