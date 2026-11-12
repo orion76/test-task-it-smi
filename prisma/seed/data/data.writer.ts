@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 
+import type { IDictionarySpec } from '../dictionaries/types';
 import { placesOf } from '../schema/model.places';
 import type { IChildSpec, IDataModel, IModelSpec } from '../schema/types';
 import { parseDateValue } from '../shared/date-value.parser';
@@ -20,21 +21,28 @@ import type {
 } from './types';
 
 /**
- * Writes the validated data file through the model tree of the JSON Schema. The writer knows no
- * property of the domain and keeps no order: it empties the tables of the tree and inserts the file
- * in one transaction, so a failure on any model leaves the database untouched.
+ * Writes the validated data file through the model tree of the JSON Schema: the tables of the tree
+ * and the tie tables of the dictionaries are emptied, then the file is inserted in one transaction,
+ * so a failure leaves the database untouched. A dictionary model goes in two steps: one row per key
+ * value, then one row of the tie table per parent, because the file names values, not identifiers.
  */
 export class DataWriter implements IDataWriter {
   private readonly reports = new Map<string, IModelReport>();
   private readonly byName: Map<string, IModelSpec>;
   private readonly places: Map<string, string>;
+  private readonly byDictionary: Map<string, IDictionarySpec>;
+
+  /** Identifiers of the dictionary rows of this run, by model and by the value the file names. */
+  private readonly dictionaryIds = new Map<string, Map<string, unknown>>();
 
   constructor(
     private readonly prisma: PrismaClient,
     private readonly dataModel: IDataModel,
+    private readonly dictionaries: readonly IDictionarySpec[],
   ) {
     this.byName = new Map(dataModel.models.map((model) => [model.name, model]));
     this.places = placesOf(dataModel);
+    this.byDictionary = new Map(dictionaries.map((spec) => [spec.model, spec]));
   }
 
   /**
@@ -64,12 +72,17 @@ export class DataWriter implements IDataWriter {
   }
 
   /**
-   * Empties every table of the tree in the reverse write order, so a child goes before its parent.
-   * The cascade is not used: the engine must not depend on a relation declared in the database.
+   * Empties every table the run writes: the tie tables first, because their rows name both sides, and
+   * then the tree in the reverse write order, so a child goes before its parent. The cascade is not
+   * used: the engine must not depend on a relation declared in the database.
    */
   private async clear(transaction: Prisma.TransactionClient): Promise<void> {
+    for (const dictionary of this.dictionaries) {
+      await this.delegateNamed(transaction, dictionary.link.model).deleteMany({ where: {} });
+    }
+
     for (const spec of [...this.dataModel.models].reverse()) {
-      await this.delegateOf(transaction, spec).deleteMany({ where: {} });
+      await this.delegateNamed(transaction, spec.name).deleteMany({ where: {} });
     }
   }
 
@@ -137,8 +150,14 @@ export class DataWriter implements IDataWriter {
           );
         }
 
-        await this.writeCollection(transaction, childSpec, value, parent);
+        await this.writeChildCollection(transaction, childSpec, value, parent, childPlace);
         continue;
+      }
+
+      if (this.byDictionary.has(childSpec.name)) {
+        throw new SeedError(
+          `${childPlace} — a dictionary is written as a collection of its key values`,
+        );
       }
 
       let element: IWrittenElement;
@@ -151,6 +170,28 @@ export class DataWriter implements IDataWriter {
 
       await this.writeChildren(transaction, childSpec, element.item, element.saved);
     }
+  }
+
+  /**
+   * Writes a collection of a child model: a dictionary through its two tables, any other model as a
+   * plain list of rows.
+   */
+  private async writeChildCollection(
+    transaction: Prisma.TransactionClient,
+    childSpec: IModelSpec,
+    values: unknown[],
+    parent: IParentRef,
+    place: string,
+  ): Promise<void> {
+    const dictionary = this.byDictionary.get(childSpec.name);
+
+    if (dictionary === undefined) {
+      await this.writeCollection(transaction, childSpec, values, parent);
+
+      return;
+    }
+
+    await this.writeDictionaryCollection(transaction, dictionary, values, parent, place);
   }
 
   /** Builds the row of one element and writes it. */
@@ -226,9 +267,9 @@ export class DataWriter implements IDataWriter {
     spec: IModelSpec,
     item: IPreparedItem,
   ): Promise<TRow> {
-    const saved = await this.delegateOf(transaction, spec).create({ data: item.row });
+    const saved = await this.delegateNamed(transaction, spec.name).create({ data: item.row });
 
-    this.count(spec, 1);
+    this.count(spec.name, 1);
 
     return saved;
   }
@@ -257,10 +298,10 @@ export class DataWriter implements IDataWriter {
       const data = items.map((item) => item.row);
 
       if (data.length > 0) {
-        await this.delegateOf(transaction, spec).createMany({ data });
+        await this.delegateNamed(transaction, spec.name).createMany({ data });
       }
 
-      this.count(spec, data.length);
+      this.count(spec.name, data.length);
 
       return;
     }
@@ -276,6 +317,170 @@ export class DataWriter implements IDataWriter {
 
       await this.writeChildren(transaction, spec, item, saved);
     }
+  }
+
+  /**
+   * Writes one collection of a dictionary model: the rows of the dictionary once per key value, then
+   * the rows of the tie table that point at them. The file names values, never identifiers, so the
+   * tie is resolved by the value the element carries.
+   */
+  private async writeDictionaryCollection(
+    transaction: Prisma.TransactionClient,
+    dictionary: IDictionarySpec,
+    values: readonly unknown[],
+    parent: IParentRef,
+    place: string,
+  ): Promise<void> {
+    const keys = this.dictionaryKeys(dictionary, values, place);
+
+    await this.insertDictionaries(transaction, dictionary, values, keys, place);
+
+    for (const [index, key] of keys.entries()) {
+      const itemPlace = `${place}[${index}]`;
+      const targetId = this.resolveDictionary(dictionary, key, itemPlace);
+
+      await this.insertLink(transaction, dictionary, parent, targetId, itemPlace);
+    }
+  }
+
+  /**
+   * Values the collection names its dictionary rows by, one per element.
+   *
+   * A repeated key inside one parent is an error: it would be a second tie to the same row, which the
+   * unique constraint of the tie table rejects after the dictionary row was already written.
+   */
+  private dictionaryKeys(
+    dictionary: IDictionarySpec,
+    values: readonly unknown[],
+    place: string,
+  ): string[] {
+    const seen = new Map<string, number>();
+    const keys: string[] = [];
+
+    for (const [index, value] of values.entries()) {
+      const itemPlace = `${place}[${index}]`;
+      let key: string;
+
+      try {
+        key = this.keyValueOf(dictionary, value);
+      } catch (error) {
+        throw withContext(itemPlace, error);
+      }
+
+      const previous = seen.get(key);
+
+      if (previous !== undefined) {
+        throw withContext(
+          itemPlace,
+          new SeedError(
+            `duplicate ${dictionary.key} "${key}": the same ${dictionary.model} is already ` +
+              `listed at ${place}[${previous}]`,
+          ),
+        );
+      }
+
+      seen.set(key, index);
+      keys.push(key);
+    }
+
+    return keys;
+  }
+
+  /** Value the element names its dictionary row by: the key column of the dictionary. */
+  private keyValueOf(dictionary: IDictionarySpec, value: unknown): string {
+    const key = isRecord(value) ? value[dictionary.key] : undefined;
+
+    if (typeof key !== 'string' || key.length === 0) {
+      throw new SeedError(
+        `expected a non-empty string in "${dictionary.key}", the key of ${dictionary.model}`,
+      );
+    }
+
+    return key;
+  }
+
+  /** Inserts the dictionary rows this run does not have yet: one row per key value, before any tie. */
+  private async insertDictionaries(
+    transaction: Prisma.TransactionClient,
+    dictionary: IDictionarySpec,
+    values: readonly unknown[],
+    keys: readonly string[],
+    place: string,
+  ): Promise<void> {
+    const spec = this.modelOf(dictionary.model);
+
+    for (const [index, value] of values.entries()) {
+      const key = keys[index];
+
+      if (this.dictionaryIds.get(dictionary.model)?.has(key) === true) {
+        continue;
+      }
+
+      try {
+        const saved = await this.persist(transaction, spec, this.prepare(spec, value, null));
+
+        this.rememberDictionary(dictionary.model, key, this.idOf(saved));
+      } catch (error) {
+        throw withContext(`${place}[${index}]`, error);
+      }
+    }
+  }
+
+  /**
+   * Id of the dictionary row the file inserted for a key value.
+   *
+   * @throws SeedError when the value the element names has no row, so the tie would point at nothing
+   */
+  private resolveDictionary(
+    dictionary: IDictionarySpec,
+    key: string,
+    place: string,
+  ): unknown {
+    const id = this.dictionaryIds.get(dictionary.model)?.get(key);
+
+    if (id === undefined) {
+      throw withContext(
+        place,
+        new SeedError(
+          `no ${dictionary.model} row for ${dictionary.key} "${key}" — the value the element ` +
+            'names was not inserted',
+        ),
+      );
+    }
+
+    return id;
+  }
+
+  /** Row of the tie table: the parent and the dictionary row, both by identifier. */
+  private async insertLink(
+    transaction: Prisma.TransactionClient,
+    dictionary: IDictionarySpec,
+    parent: IParentRef,
+    targetId: unknown,
+    place: string,
+  ): Promise<void> {
+    const row: TRow = { [dictionary.link.parent]: parent.id, [dictionary.link.target]: targetId };
+
+    try {
+      await this.delegateNamed(transaction, dictionary.link.model).create({ data: row });
+
+      this.count(dictionary.link.model, 1);
+    } catch (error) {
+      throw withContext(place, error);
+    }
+  }
+
+  /** Remembers the id of a dictionary row, so the next parent that names the value reuses it. */
+  private rememberDictionary(model: string, key: string, id: unknown): void {
+    const ids = this.dictionaryIds.get(model);
+
+    if (ids === undefined) {
+      this.dictionaryIds.set(model, new Map([[key, id]]));
+
+      return;
+    }
+
+    ids.set(key, id);
   }
 
   /** Value of the child property, or `undefined` when an optional property is absent. */
@@ -333,22 +538,22 @@ export class DataWriter implements IDataWriter {
   }
 
   /** Prisma delegate of the model, addressed by the delegate name of its schema name. */
-  private delegateOf(transaction: Prisma.TransactionClient, spec: IModelSpec): IDelegate {
-    const name = delegateName(spec.name);
+  private delegateNamed(transaction: Prisma.TransactionClient, modelName: string): IDelegate {
+    const name = delegateName(modelName);
     const delegate: unknown = (transaction as unknown as Record<string, unknown>)[name];
 
     if (typeof delegate !== 'object' || delegate === null) {
-      throw new SeedError(`model ${spec.name} — the Prisma client has no delegate "${name}"`);
+      throw new SeedError(`model ${modelName} — the Prisma client has no delegate "${name}"`);
     }
 
     return delegate as IDelegate;
   }
 
-  private count(spec: IModelSpec, written: number): void {
-    const report = this.reports.get(spec.name);
+  private count(model: string, written: number): void {
+    const report = this.reports.get(model);
 
     if (report === undefined) {
-      this.reports.set(spec.name, { model: spec.name, written });
+      this.reports.set(model, { model, written });
 
       return;
     }

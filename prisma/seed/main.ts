@@ -5,10 +5,11 @@ import { DataValidator } from './data/data.validator';
 import { DataWriter } from './data/data.writer';
 import { assertExperiencePeriods } from './data/experience-periods.check';
 import type { IDataValidator, ISeedSummary } from './data/types';
+import { readDictionaries } from './dictionaries/dictionaries.reader';
 import { buildDataModel } from './schema/data.model';
 import { readSchema } from './schema/schema.reader';
 import type { IDataModel } from './schema/types';
-import { DATA_FILE, SCHEMA_FILE } from './shared/constants';
+import { DATA_FILE, DICTIONARIES_FILE, SCHEMA_FILE } from './shared/constants';
 import { withContext } from './shared/error-context';
 import { toErrorMessage } from './shared/error-message';
 import { toDisplayPath } from './shared/path';
@@ -59,8 +60,12 @@ async function main(): Promise<void> {
     throw withContext(reader.path, error);
   }
 
+  // The reader names the file in its own messages, like `readSchema`: the artifact is committed and
+  // a broken one is a build problem, not a mistake of the content file.
+  const dictionaries = readDictionaries(DICTIONARIES_FILE);
+
   const prisma = new PrismaClient();
-  const writer = new DataWriter(prisma, dataModel);
+  const writer = new DataWriter(prisma, dataModel, dictionaries);
 
   try {
     const summary = await writer.write(source);

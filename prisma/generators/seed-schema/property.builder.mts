@@ -14,12 +14,14 @@ import type { TSchemaFragment } from './types.mts';
 
 /**
  * Builds the rule of one field: a reference for a list relation, the derived rule of a value column,
- * or `null` when the field is not part of the import file (the inverse side of the parent link).
+ * or `null` when the field is not part of the import file (the inverse side of the parent link and the
+ * inverse side of a tie table).
  *
  * @param model model the field belongs to
  * @param field field of the DMMF datamodel
  * @param enums values of every enum
  * @param fieldFragments field rules of the config, keyed by `Model.field`
+ * @param linkModels tie tables of the dictionaries: their inverse collections are not in the file
  * @returns the subschema of the field, or `null` when the field is skipped
  */
 export function buildProperty(
@@ -27,9 +29,10 @@ export function buildProperty(
   field: DMMF.Field,
   enums: ReadonlyMap<string, string[]>,
   fieldFragments: ReadonlyMap<string, TSchemaFragment>,
+  linkModels: ReadonlySet<string>,
 ): TSchemaFragment | null {
   if (field.kind === 'object') {
-    if (!field.isList) {
+    if (!field.isList || linkModels.has(field.type)) {
       return null;
     }
 

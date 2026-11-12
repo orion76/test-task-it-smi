@@ -71,7 +71,7 @@ $defs:
           $ref: '#/$defs/project'
   socialLink:
     type: object
-    description: 'External link of the profile owner: one item of `profile.links`.'
+    description: External link of the profile owner. A dictionary row shared by the profiles that list it.
     additionalProperties: false
     required:
       - label
@@ -92,7 +92,7 @@ $defs:
         description: 'Kind of the link: one of the `SocialKind` values.'
   skill:
     type: object
-    description: Skill of the business card. The pair of `name` and the profile id is unique in the database, so one profile lists the same skill once.
+    description: Skill of the business card. The name identifies the dictionary row and is unique in the database, so one profile lists the same skill once.
     additionalProperties: false
     required:
       - name

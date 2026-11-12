@@ -75,9 +75,9 @@ export interface IDataValidator {
  */
 export interface IDataWriter {
   /**
-   * Applies the data file in a single transaction: the tables of the tree are emptied and the file
-   * is inserted, so a repeated run on an existing volume leaves the content of the file in the
-   * database instead of appending a second copy.
+   * Applies the data file in a single transaction: the tables of the tree and the tie tables of the
+   * dictionaries are emptied and the file is inserted, so a repeated run on an existing volume leaves
+   * the content of the file in the database instead of appending a second copy.
    */
   write(source: unknown): Promise<ISeedSummary>;
 }

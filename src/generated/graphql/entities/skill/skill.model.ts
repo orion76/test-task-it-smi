@@ -7,13 +7,12 @@ import { Field } from '@nestjs/graphql';
 import { ObjectType } from '@nestjs/graphql';
 import { ID } from '@nestjs/graphql';
 import { HideField } from '@nestjs/graphql';
-import { Profile } from '../profile/profile.model';
-import type { Identity } from 'identity-type';
+import { ProfileSkill } from '../profile-skill/profile-skill.model';
 
 /**
- * Skill of the profile owner.
+ * Skill of the profile owner. A dictionary row shared by the profiles that list it.
  */
-@ObjectType({description:'Skill of the profile owner.'})
+@ObjectType({description:'Skill of the profile owner. A dictionary row shared by the profiles that list it.'})
 export class Skill {
 
     @Field(() => ID, {description:'Идентификатор',nullable:false})
@@ -21,9 +20,6 @@ export class Skill {
 
     @HideField()
     type!: string;
-
-    @HideField()
-    profileId!: string;
 
     @Field(() => String, {description:'Название навыка',nullable:false})
     name!: string;
@@ -35,5 +31,5 @@ export class Skill {
     category!: string | null;
 
     @HideField()
-    profile?: Identity<Profile>;
+    profileSkills?: Array<ProfileSkill>;
 }

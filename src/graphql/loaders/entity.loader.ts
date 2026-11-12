@@ -2,11 +2,21 @@ import { Inject, Injectable, Scope } from '@nestjs/common';
 import DataLoader from 'dataloader';
 
 import { referenceOf } from '../../common/config/api-fields';
-import { columnOf } from '../../common/contracts/entity';
+import { columnOf, isThroughReference } from '../../common/contracts/entity';
 import { ENTITY_QUERY_PORT } from '../../common/contracts/entity-query.port';
 import type { IEntity, IEntityQueryPort } from '../../common/contracts/types';
-import { cacheKey, groupIds, groupKey, groupReferences, groupRowsByParent } from './grouping';
-import type { IBatchKey, IEntityLoader } from './types';
+import {
+  cacheKey,
+  groupIds,
+  groupKey,
+  groupReferences,
+  groupRowsByLink,
+  groupRowsByParent,
+  groupThroughIds,
+  throughCacheKey,
+  throughGroupKey,
+} from './grouping';
+import type { IBatchKey, IEntityLoader, IThroughBatchKey, IThroughGroup } from './types';
 
 /**
  * Request-scoped loaders of the nested fields: they turn the requests of one tick into one query per
@@ -18,6 +28,8 @@ import type { IBatchKey, IEntityLoader } from './types';
 export class EntityLoader implements IEntityLoader {
   private readonly collections: DataLoader<IBatchKey, IEntity[], string>;
 
+  private readonly throughCollections: DataLoader<IThroughBatchKey, IEntity[], string>;
+
   private readonly references: DataLoader<IBatchKey, IEntity | null, string>;
 
   constructor(@Inject(ENTITY_QUERY_PORT) private readonly query: IEntityQueryPort) {
@@ -26,6 +38,11 @@ export class EntityLoader implements IEntityLoader {
     this.collections = new DataLoader<IBatchKey, IEntity[], string>(
       (requests) => this.readCollections(requests),
       { cacheKeyFn: cacheKey },
+    );
+
+    this.throughCollections = new DataLoader<IThroughBatchKey, IEntity[], string>(
+      (requests) => this.readThroughCollections(requests),
+      { cacheKeyFn: throughCacheKey },
     );
 
     this.references = new DataLoader<IBatchKey, IEntity | null, string>(
@@ -37,12 +54,23 @@ export class EntityLoader implements IEntityLoader {
   /**
    * Loads one nested collection of one row; requests of the same tick share one query.
    *
+   * A collection read through a tie table is answered by two batched reads — the ties of every parent
+   * and the rows they name — instead of one query per parent.
+   *
    * @param parent row whose collection is read
    * @param field name of the relation field, e.g. `links`
    * @throws Error naming the config file when the field is not declared as a reference
    */
   load(parent: IEntity, field: string): Promise<IEntity[]> {
     const reference = referenceOf(parent.type, field);
+
+    if (isThroughReference(reference)) {
+      return this.throughCollections.load({
+        entity: reference.entity,
+        through: reference.through,
+        ids: [parent.id],
+      });
+    }
 
     return this.collections.load({ ...reference, ids: [parent.id] });
   }
@@ -55,10 +83,18 @@ export class EntityLoader implements IEntityLoader {
    *
    * @param row row that holds the reference
    * @param field name of the relation field, e.g. `profile`
-   * @throws Error naming the config file when the field is not declared as a reference
+   * @throws Error naming the config file when the field is not declared as a reference, or when the
+   *   reference is a collection read through a tie table
    */
   loadOne(row: IEntity, field: string): Promise<IEntity | null> {
     const reference = referenceOf(row.type, field);
+
+    if (isThroughReference(reference)) {
+      throw new Error(
+        `${row.type}.${field}: the reference is read through a tie table, so it is a collection`,
+      );
+    }
+
     const id = columnOf(row, reference.property);
 
     if (typeof id !== 'string') {
@@ -92,6 +128,46 @@ export class EntityLoader implements IEntityLoader {
     return requests.map(
       (request) => rowsByGroup.get(groupKey(request))?.get(request.ids[0]) ?? [],
     );
+  }
+
+  /**
+   * Batch function of the through collections: one read of the ties and one of the rows they name,
+   * per table and tick.
+   */
+  private async readThroughCollections(
+    requests: readonly IThroughBatchKey[],
+  ): Promise<IEntity[][]> {
+    const groups = groupThroughIds(requests);
+    const rowsByGroup = new Map<string, Map<string, IEntity[]>>();
+
+    await Promise.all(
+      [...groups].map(async ([key, group]) => {
+        rowsByGroup.set(key, await this.readThroughGroup(group));
+      }),
+    );
+
+    return requests.map(
+      (request) => rowsByGroup.get(throughGroupKey(request))?.get(request.ids[0]) ?? [],
+    );
+  }
+
+  /**
+   * Ties of the parents, then the rows the ties name: two queries for the whole group.
+   *
+   * The rows of the collection are read by the order of the contract, so the subsequence of one parent
+   * is already sorted and the grouping keeps it as is.
+   */
+  private async readThroughGroup(group: IThroughGroup): Promise<Map<string, IEntity[]>> {
+    const links = await this.query.find(group.through.entity, {
+      parentIds: group.ids,
+      parentProperty: group.through.parent,
+    });
+    const targetIds = links
+      .map((link) => columnOf(link, group.through.target))
+      .filter((id): id is string => typeof id === 'string');
+    const rows = await this.query.find(group.entity, { ids: [...new Set(targetIds)] });
+
+    return groupRowsByLink(rows, links, group.through);
   }
 
   /**

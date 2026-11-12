@@ -1,4 +1,4 @@
-import type { IEntity } from '../../common/contracts/types';
+import type { IEntity, IThroughLink } from '../../common/contracts/types';
 
 /**
  * Contract of the loader as a field resolver sees it: a nested field is answered by one of the two
@@ -39,4 +39,25 @@ export interface IBatchGroup {
   /** Ids of the parents; they stay unique within a group because DataLoader drops duplicates. */
   ids: string[];
   property: string;
+}
+
+/**
+ * Key of a collection read through a tie table: the two tables, the columns that name the parent and
+ * the held row, and the parent ids.
+ */
+export interface IThroughBatchKey {
+  /** Entity the collection holds, as `references` of the config names it (`skill`, …). */
+  readonly entity: string;
+  /** Tie table of the collection and the columns it stores. */
+  readonly through: IThroughLink;
+  /** Ids of the parents the collection is read for. */
+  readonly ids: readonly string[];
+}
+
+/** Batch of through-collection requests that one pair of queries answers. */
+export interface IThroughGroup {
+  entity: string;
+  through: IThroughLink;
+  /** Ids of the parents; they stay unique within a group because DataLoader drops duplicates. */
+  ids: string[];
 }

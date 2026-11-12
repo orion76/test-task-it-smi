@@ -7,10 +7,10 @@ import { Field } from '@nestjs/graphql';
 import { ObjectType } from '@nestjs/graphql';
 import { ID } from '@nestjs/graphql';
 import { HideField } from '@nestjs/graphql';
-import { SocialLink } from '../social-link/social-link.model';
-import { Skill } from '../skill/skill.model';
 import { Experience } from '../experience/experience.model';
 import { Project } from '../project/project.model';
+import { ProfileSkill } from '../profile-skill/profile-skill.model';
+import { ProfileSocialLink } from '../profile-social-link/profile-social-link.model';
 
 /**
  * Business-card owner with nested collections.
@@ -43,14 +43,14 @@ export class Profile {
     updatedAt!: Date;
 
     @HideField()
-    links?: Array<SocialLink>;
-
-    @HideField()
-    skills?: Array<Skill>;
-
-    @HideField()
     experience?: Array<Experience>;
 
     @HideField()
     projects?: Array<Project>;
+
+    @HideField()
+    profileSkills?: Array<ProfileSkill>;
+
+    @HideField()
+    profileSocialLinks?: Array<ProfileSocialLink>;
 }

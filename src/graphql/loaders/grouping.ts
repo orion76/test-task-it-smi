@@ -6,8 +6,8 @@
  * the port: it is split into groups first, and the rows are spread over the keys again.
  */
 import { columnOf } from '../../common/contracts/entity';
-import type { IEntity } from '../../common/contracts/types';
-import type { IBatchGroup, IBatchKey } from './types';
+import type { IEntity, IThroughLink } from '../../common/contracts/types';
+import type { IBatchGroup, IBatchKey, IThroughBatchKey, IThroughGroup } from './types';
 
 /**
  * Key of one batch group: the entity and the column it is read through.
@@ -22,6 +22,21 @@ export function groupKey(request: IBatchKey): string {
 /** Cache key of one batch request: the group and the single id it is read for. */
 export function cacheKey(request: IBatchKey): string {
   return `${groupKey(request)}:${request.ids[0]}`;
+}
+
+/**
+ * Key of one through group: the entity the collection holds and the tie table it is read through.
+ * Two collections of one entity through two different tables are two groups.
+ */
+export function throughGroupKey(request: IThroughBatchKey): string {
+  const { entity, parent, target } = request.through;
+
+  return `${request.entity}:${entity}:${parent}:${target}`;
+}
+
+/** Cache key of one through request: the group and the single parent it is read for. */
+export function throughCacheKey(request: IThroughBatchKey): string {
+  return `${throughGroupKey(request)}:${request.ids[0]}`;
 }
 
 /**
@@ -53,6 +68,26 @@ export function groupReferences(requests: readonly IBatchKey[]): Map<string, str
 }
 
 /**
+ * Parent ids of the through collections grouped by the tables they are read through.
+ *
+ * One group is one tie table and one column of its parent, so the batch is a single `in (…)` on that
+ * column, no matter how many parents and fields the tick contains.
+ */
+export function groupThroughIds(
+  requests: readonly IThroughBatchKey[],
+): Map<string, IThroughGroup> {
+  const grouped = groupBy(requests, throughGroupKey);
+
+  return new Map(
+    [...grouped].map(([key, group]) => {
+      const [{ entity, through }] = group;
+
+      return [key, { entity, through, ids: group.map((request) => request.ids[0]) }];
+    }),
+  );
+}
+
+/**
  * Rows grouped by the parent they name, in the order the port returned them.
  *
  * A row that names no parent is dropped: only collection rows reach a nested field, so attaching it
@@ -65,6 +100,62 @@ export function groupRowsByParent(
   const parentRows = rows.filter((row) => typeof columnOf(row, property) === 'string');
 
   return groupBy(parentRows, (row) => String(columnOf(row, property)));
+}
+
+/**
+ * Rows of a collection read through a tie table, grouped by the parent the tie names, in the order
+ * they arrived.
+ *
+ * The tie rows carry the membership, and the rows of the collection are read by the order of the
+ * contract, so the subsequence of one parent is already sorted: nothing is sorted here, and a parent
+ * is never asked for its own query. A tie that names no parent or no row is dropped.
+ *
+ * @param rows rows of the collection, in the order of the second query
+ * @param links rows of the tie table
+ * @param through the tie table and the columns that name the parent and the held row
+ * @returns the rows of every parent
+ */
+export function groupRowsByLink(
+  rows: readonly IEntity[],
+  links: readonly IEntity[],
+  through: IThroughLink,
+): Map<string, IEntity[]> {
+  const parentsByTarget = new Map<string, string[]>();
+
+  for (const link of links) {
+    const target = columnOf(link, through.target);
+    const parent = columnOf(link, through.parent);
+
+    if (typeof target !== 'string' || typeof parent !== 'string') {
+      continue;
+    }
+
+    const parents = parentsByTarget.get(target);
+
+    if (parents === undefined) {
+      parentsByTarget.set(target, [parent]);
+      continue;
+    }
+
+    parents.push(parent);
+  }
+
+  const grouped = new Map<string, IEntity[]>();
+
+  for (const row of rows) {
+    for (const parent of parentsByTarget.get(row.id) ?? []) {
+      const group = grouped.get(parent);
+
+      if (group === undefined) {
+        grouped.set(parent, [row]);
+        continue;
+      }
+
+      group.push(row);
+    }
+  }
+
+  return grouped;
 }
 
 /**

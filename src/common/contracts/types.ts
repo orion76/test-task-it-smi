@@ -16,14 +16,38 @@ export interface IEntity {
 }
 
 /**
- * One reference of `config/api-fields.yml`: the entity a relation points at and the column that
- * holds the identifier of that entity.
+ * One reference of `config/api-fields.yml`: what a nested field reads and how.
+ *
+ * A relation is either a column of one of the two rows (`Profile.experience` through `profileId`) or a
+ * tie table between them (`Profile.skills` through `ProfileSkill`): a dictionary row carries no column
+ * of the parent, so the pair is stored in a table of its own.
  */
-export interface IEntityReference {
+export type UEntityReference = IDirectReference | IThroughReference;
+
+/** A relation read through a column of one of the two rows. */
+export interface IDirectReference {
   /** Entity the relation points at, named as the Prisma delegate is (`socialLink`, `profile`, …). */
   readonly entity: string;
   /** Column of the row that stores the identifier of the related entity (`profileId`). */
   readonly property: string;
+}
+
+/** A collection read through the tie table of the two rows. */
+export interface IThroughReference {
+  /** Entity the collection holds, named as the Prisma delegate is (`socialLink`, `skill`, …). */
+  readonly entity: string;
+  /** Tie table and the columns that name the parent and the row of the collection. */
+  readonly through: IThroughLink;
+}
+
+/** Tie table of a collection: the model and the two identifiers it stores. */
+export interface IThroughLink {
+  /** Table between the two rows, named as the Prisma delegate is (`profileSkill`, …). */
+  readonly entity: string;
+  /** Column that stores the identifier of the parent row (`profileId`). */
+  readonly parent: string;
+  /** Column that stores the identifier of the row the collection holds (`skillId`). */
+  readonly target: string;
 }
 
 /**

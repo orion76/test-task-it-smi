@@ -1,7 +1,7 @@
 import { loadConfig } from 'yaml-loader';
 
 import { entityNameOf } from '../contracts/entity';
-import type { IEntityReference, TOrderBy, USortKey } from '../contracts/types';
+import type { IThroughLink, TOrderBy, UEntityReference, USortKey } from '../contracts/types';
 import { API_FIELDS_CONFIG_PATH } from './config-paths';
 import type { IContractIndex, TReferencesByEntity } from './types';
 
@@ -9,7 +9,8 @@ import type { IContractIndex, TReferencesByEntity } from './types';
 let cached: IContractIndex | null = null;
 
 /**
- * Reference of one field of one entity: the entity to read and the column that points at the parent.
+ * Reference of one field of one entity: what the field reads and how — a column of a row or a tie
+ * table between the two rows.
  *
  * `entity` is the `type` of the row (`profile`, `socialLink`, …), not the model name: that is what
  * the row carries and what the config is indexed by.
@@ -18,7 +19,7 @@ let cached: IContractIndex | null = null;
  * @param field name of the relation field, e.g. `links`
  * @throws Error naming the file, the entity and the field when the reference is not declared
  */
-export function referenceOf(entity: string, field: string): IEntityReference {
+export function referenceOf(entity: string, field: string): UEntityReference {
   const reference = contract().references.get(entity)?.get(field);
 
   if (reference === undefined) {
@@ -77,8 +78,8 @@ function indexModels(models: Record<string, unknown>): IContractIndex {
  * @param model model entry as the YAML parser returned it
  * @throws Error naming the file and the model when the block is not a mapping
  */
-function referencesOf(modelName: string, model: unknown): Map<string, IEntityReference> {
-  const fields = new Map<string, IEntityReference>();
+function referencesOf(modelName: string, model: unknown): Map<string, UEntityReference> {
+  const fields = new Map<string, UEntityReference>();
   const references = isRecord(model) ? model.references : undefined;
 
   if (references === undefined) {
@@ -175,27 +176,61 @@ function toSortKey(value: unknown): USortKey {
 }
 
 /**
- * Reads the `entity` and `property` of one entry of the `references` block.
- *
- * A rejected entry names the key that is wrong and the value it has to hold — the only thing the
- * check knows. The place of the entry (the model and the field) is added by `referencesOf`, which
- * reads it from the document, so no path is passed down for the sake of the message.
+ * Reads one entry of the `references` block: the entity and how the field reads it — through a column
+ * of a row or through the tie table between the two rows. A rejected entry names the key that is
+ * wrong and the value it has to hold; the place of the entry is added by `referencesOf`, which reads
+ * it from the document, so no path is passed down for the sake of the message.
  *
  * @throws Error naming the offending key of the entry
  */
-function toReference(value: unknown): IEntityReference {
+function toReference(value: unknown): UEntityReference {
   const entity = isRecord(value) ? value.entity : undefined;
-  const property = isRecord(value) ? value.property : undefined;
 
   if (typeof entity !== 'string' || entity.length === 0) {
     throw new Error('entity must be an entity name');
   }
+
+  const through = isRecord(value) ? value.through : undefined;
+
+  if (through !== undefined) {
+    return { entity, through: toThroughLink(through) };
+  }
+
+  const property = isRecord(value) ? value.property : undefined;
 
   if (typeof property !== 'string' || property.length === 0) {
     throw new Error('property must be a column name');
   }
 
   return { entity, property };
+}
+
+/**
+ * Reads the `through` block of one entry: the tie table and the two columns it stores.
+ *
+ * @throws Error naming the key of the block that is wrong
+ */
+function toThroughLink(value: unknown): IThroughLink {
+  return {
+    entity: throughName(value, 'entity', 'an entity name'),
+    parent: throughName(value, 'parent', 'a column name'),
+    target: throughName(value, 'target', 'a column name'),
+  };
+}
+
+/**
+ * Reads one name of the `through` block.
+ *
+ * @throws Error naming the key and the value it has to hold
+ */
+function throughName(value: unknown, key: string, expected: string): string {
+  const name = isRecord(value) ? value[key] : undefined;
+
+  if (typeof name !== 'string' || name.length === 0) {
+    throw new Error(`through.${key} must be ${expected}`);
+  }
+
+  return name;
 }
 
 /**

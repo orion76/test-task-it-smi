@@ -57,33 +57,9 @@ export class ProjectRelationsResolver {
   }
 }
 
-/** Nested relations of `Skill`, as declared in `config/api-fields.yml`. */
-@Resolver(() => Skill)
-export class SkillRelationsResolver {
-  constructor(@Inject(EntityLoader) private readonly loader: IEntityLoader) {}
-
-  @ResolveField(() => Profile, { description: 'Владелец визитки, которому принадлежит навык' })
-  profile(@Parent() row: IEntity): Promise<IEntity | null> {
-    return this.loader.loadOne(row, 'profile');
-  }
-}
-
-/** Nested relations of `SocialLink`, as declared in `config/api-fields.yml`. */
-@Resolver(() => SocialLink)
-export class SocialLinkRelationsResolver {
-  constructor(@Inject(EntityLoader) private readonly loader: IEntityLoader) {}
-
-  @ResolveField(() => Profile, { description: 'Владелец визитки, которому принадлежит ссылка' })
-  profile(@Parent() row: IEntity): Promise<IEntity | null> {
-    return this.loader.loadOne(row, 'profile');
-  }
-}
-
 /** Registered as one list by `GraphqlApiModule`. */
 export const RELATION_RESOLVERS = [
   ExperienceRelationsResolver,
   ProfileRelationsResolver,
   ProjectRelationsResolver,
-  SkillRelationsResolver,
-  SocialLinkRelationsResolver,
 ];

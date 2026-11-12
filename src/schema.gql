@@ -100,7 +100,9 @@ type Query {
   ): [Profile!]!
 }
 
-"""Skill of the profile owner."""
+"""
+Skill of the profile owner. A dictionary row shared by the profiles that list it.
+"""
 type Skill {
   """Категория навыка; null — не указана"""
   category: String
@@ -110,9 +112,6 @@ type Skill {
 
   """Название навыка"""
   name: String!
-
-  """Владелец визитки, которому принадлежит навык"""
-  profile: Profile!
 }
 
 enum SocialKind {
@@ -122,7 +121,9 @@ enum SocialKind {
   WEBSITE
 }
 
-"""External link of the profile owner: one item of `profile.links`."""
+"""
+External link of the profile owner. A dictionary row shared by the profiles that list it.
+"""
 type SocialLink {
   """Идентификатор"""
   id: ID!
@@ -132,9 +133,6 @@ type SocialLink {
 
   """Подпись ссылки"""
   label: String!
-
-  """Владелец визитки, которому принадлежит ссылка"""
-  profile: Profile!
 
   """Адрес ссылки"""
   url: String!

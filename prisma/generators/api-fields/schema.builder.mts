@@ -3,13 +3,15 @@
  *
  * The document has three blocks: `version`, `models` and `queries`. Everything they refer to is
  * pinned down to the names the datamodel declares, so a typo becomes a build error instead of a
- * field that silently leaves the API or a query that reads a table nobody has.
+ * field that silently leaves the API or a query that reads a table nobody has. A tie table of a
+ * collection is not a model of the API: its rows are read through the collection that names it.
  */
 import type { DMMF } from '@prisma/generator-helper';
 
 import { compare, delegateName } from '../shared/dmmf.mts';
 import { PROPERTY_SCHEMA, QUERY_SCHEMA, SORT_SCHEMA, VALUE_FIELD_KINDS } from './constants.mts';
-import type { TSchemaNode } from './types.mts';
+import { linkModelsOf, throughCollectionsOf } from './through.links.mts';
+import type { IThroughCollection, TSchemaNode } from './types.mts';
 
 /**
  * Builds the JSON Schema of the whole contract from the models of the datamodel.
@@ -18,7 +20,10 @@ import type { TSchemaNode } from './types.mts';
  * @returns the schema of the API contract
  */
 export function buildSchema(models: readonly DMMF.Model[]): TSchemaNode {
-  const sorted = [...models].sort((left, right) => compare(left.name, right.name));
+  const linkModels = linkModelsOf(models);
+  const sorted = models
+    .filter((model) => !linkModels.has(model.name))
+    .sort((left, right) => compare(left.name, right.name));
   const modelProperties: Record<string, TSchemaNode> = {};
 
   for (const model of sorted) {
@@ -29,7 +34,7 @@ export function buildSchema(models: readonly DMMF.Model[]): TSchemaNode {
       properties: {
         description: { type: 'string', minLength: 1 },
         properties: buildProperties(model.fields),
-        references: buildReferences(model, models),
+        references: buildReferences(model, models, linkModels),
         order: buildOrder(model.fields),
       },
     };
@@ -114,46 +119,90 @@ function buildOrder(fields: readonly DMMF.Field[]): TSchemaNode {
 
 /**
  * Builds the `references` block of one model: its relations, each pinned to the entity it points at
- * and to the column that holds the identifier of that entity. Both values are `const`, not free
- * strings, so writing `Skill` instead of `skill` fails the build instead of reading a wrong table.
+ * and to the column that holds its identifier. A collection read through a tie table has no column of
+ * its own, so it is declared under a name the contract chooses, and `additionalProperties` accepts
+ * only the through-form of a table that ties this model to another one.
  *
  * @param model model whose relations are described
- * @param models every model of the datamodel, for the back-relation lookup
+ * @param models every model of the datamodel, for the back-relation and tie-table lookups
+ * @param linkModels tie tables: their inverse collections are not part of the API
  * @returns the `references` subschema
  */
-function buildReferences(model: DMMF.Model, models: readonly DMMF.Model[]): TSchemaNode {
+function buildReferences(
+  model: DMMF.Model,
+  models: readonly DMMF.Model[],
+  linkModels: ReadonlySet<string>,
+): TSchemaNode {
+  const properties: Record<string, TSchemaNode> = {};
   const relations = model.fields
-    .filter((field) => field.kind === 'object')
+    .filter((field) => field.kind === 'object' && !linkModels.has(field.type))
     .map((field) => ({ field, property: foreignKeyOf(field, model, models) }))
-    .filter(({ property }) => property !== null)
     .sort((left, right) => compare(left.field.name, right.field.name));
 
-  const properties: Record<string, TSchemaNode> = {};
-
   for (const { field, property } of relations) {
-    properties[field.name] = {
-      type: 'object',
-      additionalProperties: false,
-      required: ['description', 'entity', 'property'],
-      properties: {
-        description: { type: 'string', minLength: 1 },
-        entity: { const: delegateName(field.type) },
-        property: { const: property },
-      },
-    };
+    if (property !== null) {
+      properties[field.name] = directReference(field, property);
+    }
   }
 
-  return { type: 'object', additionalProperties: false, properties };
+  const collections = throughCollectionsOf(model, models);
+
+  return {
+    type: 'object',
+    additionalProperties:
+      collections.length === 0 ? false : { oneOf: collections.map(throughReference) },
+    properties,
+  };
+}
+
+/** One relation read through a column of a row: the entity and the column that names it. */
+function directReference(field: DMMF.Field, property: string): TSchemaNode {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['description', 'entity', 'property'],
+    properties: {
+      description: { type: 'string', minLength: 1 },
+      entity: { const: delegateName(field.type) },
+      property: { const: property },
+    },
+  };
+}
+
+/**
+ * One collection read through a tie table: the entity it holds, the table and the two columns. The
+ * name of the field is the one the contract chooses, so only the read is pinned here.
+ */
+function throughReference(collection: IThroughCollection): TSchemaNode {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['description', 'entity', 'through'],
+    properties: {
+      description: { type: 'string', minLength: 1 },
+      entity: { const: collection.entity },
+      through: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['entity', 'parent', 'target'],
+        properties: {
+          entity: { const: delegateName(collection.link.model) },
+          parent: { const: collection.link.parent },
+          target: { const: collection.link.target },
+        },
+      },
+    },
+  };
 }
 
 /**
  * Column that holds the identifier of the related row.
  *
  * The relation may declare it itself (`relationFromFields`) or leave it to the opposite side, which
- * is the case for a list: `Profile.links` has no key of its own, `SocialLink.profile` has one.
+ * is the case for a list: `Profile.experience` has no key of its own, `Experience.profile` has one.
  *
  * @returns the column name, or `null` when the relation carries no foreign key at all (a relation
- *   without a key cannot be read through a single column)
+ *   without a key is read through a tie table or is not part of the API)
  */
 function foreignKeyOf(
   field: DMMF.Field,

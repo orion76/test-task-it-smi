@@ -7,7 +7,13 @@ import type { DMMF } from '@prisma/generator-helper';
 
 import { delegateName } from '../shared/dmmf.mts';
 import { isMapping } from '../shared/mapping.mts';
-import { CONFIG_KEYS, FRAGMENT_KEYWORDS, ROOT_KEYS } from './constants.mts';
+import {
+  CONFIG_KEYS,
+  DICTIONARY_KEYS,
+  DICTIONARY_LINK_KEYS,
+  FRAGMENT_KEYWORDS,
+  ROOT_KEYS,
+} from './constants.mts';
 import config from './seed-schema.config.mts';
 import { failConfig } from './shared/errors.mts';
 import { location } from './shared/location.mts';
@@ -51,6 +57,48 @@ export function assertConfig(): void {
   }
 
   assertMapping('overrides', config.overrides);
+
+  assertDictionaries();
+}
+
+/** Checks the `dictionaries` block: model names, each with a key and a tie table of two columns. */
+function assertDictionaries(): void {
+  if (!isMapping(config.dictionaries)) {
+    failConfig('dictionaries: expected a mapping of model names to their key and tie table');
+  }
+
+  for (const [modelName, entry] of Object.entries(config.dictionaries)) {
+    const place = `dictionaries.${modelName}`;
+
+    assertKnownKeys(place, entry, DICTIONARY_KEYS);
+
+    if (typeof entry.key !== 'string' || entry.key.length === 0) {
+      failConfig(`${place}.key: expected the column that identifies a row of the dictionary`);
+    }
+
+    assertKnownKeys(`${place}.link`, entry.link, DICTIONARY_LINK_KEYS);
+
+    for (const [key, value] of Object.entries(entry.link)) {
+      if (typeof value !== 'string' || value.length === 0) {
+        failConfig(`${place}.link.${key}: expected a name of the datamodel`);
+      }
+    }
+  }
+}
+
+/**
+ * Checks that a block of the config holds only the keys the generator reads.
+ *
+ * @param place path of the block in the config, for the message
+ * @param block block to check
+ * @param known keys the generator reads
+ */
+function assertKnownKeys(place: string, block: object, known: ReadonlySet<string>): void {
+  for (const key of Object.keys(block)) {
+    if (!known.has(key)) {
+      failConfig(`${place}: unknown key "${key}"; expected one of: ${[...known].join(', ')}`);
+    }
+  }
 }
 
 /** Checks the `omit` block: an array of unique column names. */

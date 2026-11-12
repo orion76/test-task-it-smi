@@ -40,6 +40,23 @@ const config = {
   // собственные значения, а не служебная колонка с индексом элемента массива.
   omit: ['id', 'type', 'profileId', 'createdAt', 'updatedAt'],
 
+  // Справочники: модели, строки которых делятся между родителями. В файле импорта значение
+  // записано под родителем, как обычный элемент коллекции, но в БД это одна строка справочника и
+  // одна строка связи с родителем. Здесь названы ключ справочника (значение, которым его называет
+  // файл) и таблица связи с колонками родителя и цели; генератор проверяет каждое имя по DMMF и
+  // выпускает блок отдельным артефактом `config/dictionaries.yml`, по которому пишет сидинг.
+  // Таблицы связи в файл импорта не попадают: движок выводит их строки из вложенности.
+  dictionaries: {
+    Skill: {
+      key: 'name',
+      link: { model: 'ProfileSkill', parent: 'profileId', target: 'skillId' },
+    },
+    SocialLink: {
+      key: 'url',
+      link: { model: 'ProfileSocialLink', parent: 'profileId', target: 'socialLinkId' },
+    },
+  },
+
   // Общие фрагменты `$defs`, не привязанные к модели: одна и та же ссылка повторяется в разных
   // моделях, поэтому правило живёт в одном месте.
   definitions: {
@@ -57,12 +74,12 @@ const config = {
 
   // Доменные ограничения поверх выведенных правил: по модели (`Skill`) и по полю (`Profile.slug`).
   overrides: {
-    // Модель: описание импорта дополняет `///` из `schema.prisma`. Пару `profileId` + `name` БД
-    // держит уникальной (`@@unique`), поэтому описание импорта говорит об уникальности `name`
-    // в пределах профиля.
+    // Модель: описание импорта дополняет `///` из `schema.prisma`. Справочник держит `name`
+    // уникальным (`@unique`), поэтому описание импорта говорит об уникальности имени, а связь с
+    // профилем живёт в таблице `ProfileSkill`.
     Skill: {
       description:
-        'Skill of the business card. The pair of `name` and the profile id is unique in the ' +
+        'Skill of the business card. The name identifies the dictionary row and is unique in the ' +
         'database, so one profile lists the same skill once.',
     },
     // Kebab-case латиница: `slug` — публичный идентификатор профиля, поэтому формат проверяется.

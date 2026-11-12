@@ -1,4 +1,4 @@
-import type { IEntity } from './types';
+import type { IEntity, IThroughReference, UEntityReference } from './types';
 
 /**
  * Name a row of a model carries in its `type` column: the name of the Prisma client delegate,
@@ -7,6 +7,17 @@ import type { IEntity } from './types';
  */
 export function entityNameOf(modelName: string): string {
   return modelName.replace(/^./, (first) => first.toLowerCase());
+}
+
+/**
+ * Whether the reference reads a tie table instead of a column of one of the two rows.
+ *
+ * @param reference reference of `config/api-fields.yml`
+ */
+export function isThroughReference(
+  reference: UEntityReference,
+): reference is IThroughReference {
+  return 'through' in reference;
 }
 
 /**

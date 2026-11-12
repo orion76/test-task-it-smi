@@ -16,6 +16,11 @@
 #     и `property` — имя поля, в котором хранится идентификатор связанной сущности (`profileId`).
 #     Моё собственное поле остаётся скрытым (генератор GraphQL-типов его не публикует), потому что
 #     значение связи разрешает резолвер, а не сама строка;
+#   - связь через таблицу описывается вместо `property` блоком `through`: `entity` — таблица связи
+#     (`profileSkill`), `parent` и `target` — её колонки с идентификаторами родителя и элемента
+#     коллекции. Так описана коллекция справочника (`Profile.skills`, `Profile.links`): у строки
+#     справочника нет колонки родителя, поэтому пара хранится в отдельной таблице, а имя поля API
+#     выбирает этот файл;
 #   - `order` — порядок чтения строк модели: список записей ровно с одной колонкой, значение —
 #     `asc`/`desc` либо `{ sort, nulls }`. Порядок заканчивается `id`, иначе равные ключи менялись
 #     бы местами между двумя чтениями и группировка пакета «плыла»;
@@ -62,11 +67,17 @@ models:
       links:
         description: Ссылки владельца визитки
         entity: socialLink
-        property: profileId
+        through:
+          entity: profileSocialLink
+          parent: profileId
+          target: socialLinkId
       skills:
         description: Навыки владельца визитки
         entity: skill
-        property: profileId
+        through:
+          entity: profileSkill
+          parent: profileId
+          target: skillId
       experience:
         description: Места работы владельца визитки
         entity: experience
@@ -80,7 +91,7 @@ models:
     order:
       - createdAt: asc
   SocialLink:
-    description: Внешняя ссылка владельца визитки
+    description: Внешняя ссылка — строка справочника, общая для профилей, которые её указывают
     properties:
       id:
         description: Идентификатор
@@ -90,17 +101,12 @@ models:
         description: Адрес ссылки
       kind:
         description: Тип ссылки — GITHUB, LINKEDIN, WEBSITE или OTHER
-    references:
-      profile:
-        description: Владелец визитки, которому принадлежит ссылка
-        entity: profile
-        property: profileId
     order:
       - kind: asc
       - label: asc
       - id: asc
   Skill:
-    description: Навык владельца визитки
+    description: Навык — строка справочника, общая для профилей, которые его указывают
     properties:
       id:
         description: Идентификатор
@@ -108,11 +114,6 @@ models:
         description: Название навыка
       category:
         description: Категория навыка; null — не указана
-    references:
-      profile:
-        description: Владелец визитки, которому принадлежит навык
-        entity: profile
-        property: profileId
     # Пустая категория — значение, а не «первая группа»: она идёт последней, и правило записано
     # явно, а не полагается на поведение базы по умолчанию.
     order:

@@ -1,14 +1,15 @@
 /**
  * Renders `relations.resolver.ts`: the `@ResolveField` of every relation the contract publishes. A
- * collection is answered by `load`, a single relation by `loadOne`, and the loader reads the table
- * and the foreign key from the contract — nothing about them is spelled out here.
+ * collection is answered by `load`, a single relation by `loadOne`, and the loader reads the table,
+ * the column or the tie table from the contract — nothing about them is spelled out here.
  */
 import type { DMMF } from '@prisma/generator-helper';
 
 import { API_FIELDS_FILE } from '../shared/constants.mts';
-import { compare } from '../shared/dmmf.mts';
+import { compare, delegateName } from '../shared/dmmf.mts';
+import { isMapping } from '../shared/mapping.mts';
 import { escape, renderFile } from './render.utils.mts';
-import type { IRelation, IRenderedBlock, TReferenceRules } from './types.mts';
+import type { IRelation, IRenderedBlock, TContractNode, TReferenceRules } from './types.mts';
 
 /**
  * Renders the resolvers of the nested relations.
@@ -23,7 +24,7 @@ export function renderRelations(
 ): string {
   const blocks = [...models]
     .sort((left, right) => compare(left.name, right.name))
-    .map((model) => renderRelationsOfModel(model, references.get(model.name) ?? {}))
+    .map((model) => renderRelationsOfModel(model, references.get(model.name) ?? {}, models))
     .filter((block): block is IRenderedBlock => block !== null);
 
   const imports = [
@@ -42,13 +43,15 @@ export function renderRelations(
  *
  * @param model model of the datamodel
  * @param references `references` block of that model
+ * @param models every model of the datamodel, for the type of a reference
  * @returns the class, or `null`
  */
 function renderRelationsOfModel(
   model: DMMF.Model,
   references: TReferenceRules,
+  models: readonly DMMF.Model[],
 ): IRenderedBlock | null {
-  const relations = collectRelations(model, references);
+  const relations = collectRelations(model, references, models);
 
   if (relations.length === 0) {
     return null;
@@ -75,23 +78,58 @@ function renderRelationsOfModel(
 /**
  * Relations of a model that the contract publishes.
  *
- * A relation that is not listed in `references` is not part of the API: the generated GraphQL class
- * hides it, so a resolver for it would read rows nothing exposes.
+ * The contract is the list of the API fields, not the datamodel: a collection read through a tie
+ * table has no field of its own in the schema, so its name exists only here. A relation the contract
+ * does not declare is not part of the API.
  *
  * @param model model of the datamodel
  * @param references `references` block of that model
+ * @param models every model of the datamodel
  * @returns the public relations, sorted by field name
  */
-function collectRelations(model: DMMF.Model, references: TReferenceRules): IRelation[] {
-  return model.fields
-    .filter((field) => field.kind === 'object' && references[field.name] !== undefined)
-    .map((field) => ({
-      field: field.name,
-      target: field.type,
-      list: field.isList === true,
-      description: String(references[field.name].description),
-    }))
+function collectRelations(
+  model: DMMF.Model,
+  references: TReferenceRules,
+  models: readonly DMMF.Model[],
+): IRelation[] {
+  return Object.entries(references)
+    .map(([field, rule]) => relationOf(model, field, rule, models))
     .sort((left, right) => compare(left.field, right.field));
+}
+
+/**
+ * One relation of the contract: the type it returns and whether it is a collection.
+ *
+ * A one-hop reference is described by the field the model declares; a through-form is a collection,
+ * because a tie table ties one dictionary row to one parent.
+ *
+ * @param model model the reference belongs to
+ * @param field name of the relation field
+ * @param rule the reference as the contract declares it
+ * @param models every model of the datamodel
+ * @returns the relation the renderer needs
+ * @throws Error naming the file, the model and the field when the entity is not a model
+ */
+function relationOf(
+  model: DMMF.Model,
+  field: string,
+  rule: TContractNode,
+  models: readonly DMMF.Model[],
+): IRelation {
+  const entity = String(rule.entity);
+  const target = models.find((candidate) => delegateName(candidate.name) === entity);
+
+  if (target === undefined) {
+    throw new Error(
+      `${API_FIELDS_FILE}: models.${model.name}.references.${field}: ` +
+        `the datamodel has no entity "${entity}"`,
+    );
+  }
+
+  const declared = model.fields.find((candidate) => candidate.name === field);
+  const list = declared === undefined ? isMapping(rule.through) : declared.isList === true;
+
+  return { field, target: target.name, list, description: String(rule.description) };
 }
 
 /**

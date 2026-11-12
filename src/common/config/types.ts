@@ -1,6 +1,6 @@
 import type { SchemaObject, ValidateFunction } from 'ajv';
 
-import type { IEntityReference, TOrderBy } from '../contracts/types';
+import type { UEntityReference, TOrderBy } from '../contracts/types';
 
 /**
  * Режим работы приложения, вычисленный из переменной NODE_ENV. Значения совпадают с `enum`
@@ -54,7 +54,7 @@ export interface ICompiledEnvironmentValidator {
  * The only place where the server learns how a row is connected to another row, so neither the
  * loader nor the repository names a column of its own.
  */
-export type TReferencesByEntity = Map<string, Map<string, IEntityReference>>;
+export type TReferencesByEntity = Map<string, Map<string, UEntityReference>>;
 
 /**
  * The contract as the process keeps it: the `references` indexed by the entity the rows carry and

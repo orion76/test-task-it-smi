@@ -120,7 +120,60 @@ properties:
                 $ref: '#/$defs/property'
           references:
             type: object
-            additionalProperties: false
+            additionalProperties:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - description
+                    - entity
+                    - through
+                  properties:
+                    description:
+                      type: string
+                      minLength: 1
+                    entity:
+                      const: skill
+                    through:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - entity
+                        - parent
+                        - target
+                      properties:
+                        entity:
+                          const: profileSkill
+                        parent:
+                          const: profileId
+                        target:
+                          const: skillId
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - description
+                    - entity
+                    - through
+                  properties:
+                    description:
+                      type: string
+                      minLength: 1
+                    entity:
+                      const: socialLink
+                    through:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - entity
+                        - parent
+                        - target
+                      properties:
+                        entity:
+                          const: profileSocialLink
+                        parent:
+                          const: profileId
+                        target:
+                          const: socialLinkId
             properties:
               experience:
                 type: object
@@ -137,21 +190,6 @@ properties:
                     const: experience
                   property:
                     const: profileId
-              links:
-                type: object
-                additionalProperties: false
-                required:
-                  - description
-                  - entity
-                  - property
-                properties:
-                  description:
-                    type: string
-                    minLength: 1
-                  entity:
-                    const: socialLink
-                  property:
-                    const: profileId
               projects:
                 type: object
                 additionalProperties: false
@@ -165,21 +203,6 @@ properties:
                     minLength: 1
                   entity:
                     const: project
-                  property:
-                    const: profileId
-              skills:
-                type: object
-                additionalProperties: false
-                required:
-                  - description
-                  - entity
-                  - property
-                properties:
-                  description:
-                    type: string
-                    minLength: 1
-                  entity:
-                    const: skill
                   property:
                     const: profileId
           order:
@@ -278,29 +301,39 @@ properties:
                 $ref: '#/$defs/property'
               name:
                 $ref: '#/$defs/property'
-              profileId:
-                $ref: '#/$defs/property'
               type:
                 $ref: '#/$defs/property'
           references:
             type: object
-            additionalProperties: false
-            properties:
-              profile:
-                type: object
-                additionalProperties: false
-                required:
-                  - description
-                  - entity
-                  - property
-                properties:
-                  description:
-                    type: string
-                    minLength: 1
-                  entity:
-                    const: profile
-                  property:
-                    const: profileId
+            additionalProperties:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - description
+                    - entity
+                    - through
+                  properties:
+                    description:
+                      type: string
+                      minLength: 1
+                    entity:
+                      const: profile
+                    through:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - entity
+                        - parent
+                        - target
+                      properties:
+                        entity:
+                          const: profileSkill
+                        parent:
+                          const: skillId
+                        target:
+                          const: profileId
+            properties: {}
           order:
             type: array
             items:
@@ -312,7 +345,6 @@ properties:
                   - category
                   - id
                   - name
-                  - profileId
                   - type
               additionalProperties:
                 $ref: '#/$defs/sort'
@@ -335,31 +367,41 @@ properties:
                 $ref: '#/$defs/property'
               label:
                 $ref: '#/$defs/property'
-              profileId:
-                $ref: '#/$defs/property'
               type:
                 $ref: '#/$defs/property'
               url:
                 $ref: '#/$defs/property'
           references:
             type: object
-            additionalProperties: false
-            properties:
-              profile:
-                type: object
-                additionalProperties: false
-                required:
-                  - description
-                  - entity
-                  - property
-                properties:
-                  description:
-                    type: string
-                    minLength: 1
-                  entity:
-                    const: profile
-                  property:
-                    const: profileId
+            additionalProperties:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - description
+                    - entity
+                    - through
+                  properties:
+                    description:
+                      type: string
+                      minLength: 1
+                    entity:
+                      const: profile
+                    through:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - entity
+                        - parent
+                        - target
+                      properties:
+                        entity:
+                          const: profileSocialLink
+                        parent:
+                          const: socialLinkId
+                        target:
+                          const: profileId
+            properties: {}
           order:
             type: array
             items:
@@ -371,7 +413,6 @@ properties:
                   - id
                   - kind
                   - label
-                  - profileId
                   - type
                   - url
               additionalProperties:

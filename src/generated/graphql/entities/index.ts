@@ -5,6 +5,8 @@
 
 export { Experience } from './experience/experience.model';
 export { SocialKind } from './prisma/social-kind.enum';
+export { ProfileSkill } from './profile-skill/profile-skill.model';
+export { ProfileSocialLink } from './profile-social-link/profile-social-link.model';
 export { Profile } from './profile/profile.model';
 export { Project } from './project/project.model';
 export { Skill } from './skill/skill.model';

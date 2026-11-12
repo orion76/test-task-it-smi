@@ -11,6 +11,7 @@ import { stringify } from 'yaml';
 import { delegateName } from '../shared/dmmf.mts';
 import { assertConfig, assertDefinitionNames, assertOmittedFields } from './config.validator.mts';
 import { HEADER, ROOT_PASSTHROUGH_KEYS } from './constants.mts';
+import { dictionarySpecs, linkModelNames } from './dictionaries.mts';
 import { applyFragment, splitOverrides } from './overrides.mts';
 import { buildProperty, isRequiredInFile, referenceTo } from './property.builder.mts';
 import config from './seed-schema.config.mts';
@@ -47,23 +48,30 @@ function buildDocument(datamodel: DMMF.Datamodel): TSchemaFragment {
   ]);
   const enums = new Map(pairs);
   const models = datamodel.models;
+  const linkModels = linkModelNames(dictionarySpecs(models));
 
   assertDefinitionNames(models);
 
-  return buildRoot(models, { ...config.definitions, ...buildModelDefinitions(models, enums) });
+  return buildRoot(models, {
+    ...config.definitions,
+    ...buildModelDefinitions(models, enums, linkModels),
+  });
 }
 
 /**
  * Builds `$defs` for every model, keyed by the delegate name of the model (`SocialLink` →
- * `socialLink`): the same spelling the Prisma client uses for the model names.
+ * `socialLink`): the same spelling the Prisma client uses for the model names. A tie table of a
+ * dictionary is not a model of the import file: the engine writes its rows from the nesting.
  *
  * @param models models of the DMMF datamodel
  * @param enums values of every enum, keyed by the enum name
+ * @param linkModels tie tables of the dictionaries
  * @returns the model definitions
  */
 function buildModelDefinitions(
   models: readonly DMMF.Model[],
   enums: ReadonlyMap<string, string[]>,
+  linkModels: ReadonlySet<string>,
 ): Record<string, TSchemaFragment> {
   const omitted = new Set(config.omit);
   const overrides = splitOverrides(models, omitted);
@@ -72,23 +80,33 @@ function buildModelDefinitions(
   assertOmittedFields(models, omitted);
 
   for (const model of models) {
-    definitions[delegateName(model.name)] = buildModelDefinition(model, enums, omitted, overrides);
+    if (linkModels.has(model.name)) {
+      continue;
+    }
+
+    definitions[delegateName(model.name)] = buildModelDefinition(
+      model,
+      enums,
+      omitted,
+      overrides,
+      linkModels,
+    );
   }
 
   return definitions;
 }
 
 /**
- * Builds the definition of one model.
- *
- * An omitted column never reaches the schema. A single-valued relation is skipped as well: it is the
- * inverse side of the parent link, so the foreign key is derived from the nesting and never repeated
- * in the file. A list relation becomes an array of references to the definition of the target model.
+ * Builds the definition of one model: an omitted column never reaches the schema, and a single-valued
+ * relation is skipped as well, because it is the inverse side of the parent link. A list relation
+ * becomes an array of references to the target model, unless the target is a tie table: a dictionary
+ * row is nested as a value, and its ties are written by the engine.
  *
  * @param model model of the DMMF datamodel
  * @param enums values of every enum
  * @param omitted columns the import file does not contain
  * @param overrides fragments of the config, split by what they annotate
+ * @param linkModels tie tables of the dictionaries
  * @returns the definition of the model
  */
 function buildModelDefinition(
@@ -96,6 +114,7 @@ function buildModelDefinition(
   enums: ReadonlyMap<string, string[]>,
   omitted: ReadonlySet<string>,
   overrides: IOverrides,
+  linkModels: ReadonlySet<string>,
 ): TSchemaFragment {
   const definition: TSchemaFragment = { type: 'object' };
 
@@ -113,7 +132,7 @@ function buildModelDefinition(
       continue;
     }
 
-    const property = buildProperty(model, field, enums, overrides.fieldFragments);
+    const property = buildProperty(model, field, enums, overrides.fieldFragments, linkModels);
 
     if (property === null) {
       continue;

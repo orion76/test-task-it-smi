@@ -1,5 +1,5 @@
 // Prisma schema for the business-card domain.
-// Mirrors the data model fixed in tz-detail.md §5: five models, one enum, no extra fields.
+// Mirrors the data model fixed in tz-detail.md §5: seven models, one enum, no extra fields.
 // The same schema is used by the NestJS data layer and by the seed (prisma/seed/main.ts).
 
 generator client {
@@ -77,10 +77,13 @@ model Profile {
   description String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  links       SocialLink[]
-  skills      Skill[]
   experience  Experience[]
   projects    Project[]
+  // A skill and a link are dictionary rows shared between profiles, so the collection of a profile is
+  // a list of the rows of the tie table, not a column of this one. The API still publishes `skills`
+  // and `links`; the loader reads them through `ProfileSkill` and `ProfileSocialLink`.
+  profileSkills      ProfileSkill[]
+  profileSocialLinks ProfileSocialLink[]
 }
 
 enum SocialKind {
@@ -90,37 +93,62 @@ enum SocialKind {
   OTHER
 }
 
-/// External link of the profile owner: one item of `profile.links`.
+/// External link of the profile owner. A dictionary row shared by the profiles that list it.
 model SocialLink {
-  id        String     @id @default(uuid())
-  type      String     @default("socialLink")
-  profileId String
-  label     String
-  url       String
+  id                 String              @id @default(uuid())
+  type               String              @default("socialLink")
+  label              String
+  url                String              @unique
   /// Kind of the link: one of the `SocialKind` values.
-  kind      SocialKind
-  profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  kind               SocialKind
+  profileSocialLinks ProfileSocialLink[]
 
-  // Narrowing by `profileId` plus the first keys of the read order (`kind`, `label`). The order has
-  // no column of its own: it follows from the values, and the database sorts the tail (`id`).
-  @@index([profileId, kind, label])
+  // Narrowing by the first keys of the read order (`kind`, `label`). The order has no column of its
+  // own: it follows from the values, and the database sorts the tail (`id`).
+  @@index([kind, label])
 }
 
-/// Skill of the profile owner.
+/// Skill of the profile owner. A dictionary row shared by the profiles that list it.
 model Skill {
-  id        String  @id @default(uuid())
-  type      String  @default("skill")
-  profileId String
-  name      String
+  id            String         @id @default(uuid())
+  type          String         @default("skill")
+  name          String         @unique
   /// Free-form grouping: "language", "backend", "database", …
-  category  String?
-  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  category      String?
+  profileSkills ProfileSkill[]
 
-  @@unique([profileId, name])
-  // Narrowing by `profileId` plus the first keys of the read order (`category`, `name`). An empty
-  // category sorts last by an explicit rule of the read, not by a database default; the tail (`id`)
-  // is sorted by the database.
-  @@index([profileId, category, name])
+  // Narrowing by the first keys of the read order (`category`, `name`). An empty category sorts last
+  // by an explicit rule of the read, not by a database default; the tail (`id`) is sorted by the
+  // database.
+  @@index([category, name])
+}
+
+/// Tie of one profile to one skill. The dictionary row itself is shared between profiles.
+model ProfileSkill {
+  id        String  @id @default(uuid())
+  type      String  @default("profileSkill")
+  profileId String
+  skillId   String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  skill     Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  // A profile lists a skill once; the narrowing read of one collection starts from the parent.
+  @@unique([profileId, skillId])
+  @@index([profileId])
+}
+
+/// Tie of one profile to one link. The dictionary row itself is shared between profiles.
+model ProfileSocialLink {
+  id           String     @id @default(uuid())
+  type         String     @default("profileSocialLink")
+  profileId    String
+  socialLinkId String
+  profile      Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  socialLink   SocialLink @relation(fields: [socialLinkId], references: [id], onDelete: Cascade)
+
+  // A profile lists a link once; the narrowing read of one collection starts from the parent.
+  @@unique([profileId, socialLinkId])
+  @@index([profileId])
 }
 
 /// Employment record of the profile owner.

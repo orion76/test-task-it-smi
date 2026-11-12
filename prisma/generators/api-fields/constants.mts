@@ -12,6 +12,12 @@ export const SCHEMA_FILE_NAME = 'api-fields.schema.yml';
 /** Fallback when the schema declares no `output`: mirrors the value declared in `schema.prisma`. */
 export const DEFAULT_OUTPUT = '../config';
 
+/**
+ * Columns of a model that belong to every row: the key, the discriminant and the timestamps. A tie
+ * table stores nothing else besides the two identifiers its relations own.
+ */
+export const SERVICE_COLUMNS: ReadonlySet<string> = new Set(['id', 'type', 'createdAt', 'updatedAt']);
+
 /** Header of the artifact: it explains where the content comes from and how to change it. */
 export const HEADER = [
   `# config/${SCHEMA_FILE_NAME} — JSON Schema контракта API (config/api-fields.yml).`,

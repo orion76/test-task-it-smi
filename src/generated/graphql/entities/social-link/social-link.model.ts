@@ -8,13 +8,12 @@ import { ObjectType } from '@nestjs/graphql';
 import { ID } from '@nestjs/graphql';
 import { HideField } from '@nestjs/graphql';
 import { SocialKind } from '../prisma/social-kind.enum';
-import { Profile } from '../profile/profile.model';
-import type { Identity } from 'identity-type';
+import { ProfileSocialLink } from '../profile-social-link/profile-social-link.model';
 
 /**
- * External link of the profile owner: one item of `profile.links`.
+ * External link of the profile owner. A dictionary row shared by the profiles that list it.
  */
-@ObjectType({description:'External link of the profile owner: one item of `profile.links`.'})
+@ObjectType({description:'External link of the profile owner. A dictionary row shared by the profiles that list it.'})
 export class SocialLink {
 
     @Field(() => ID, {description:'Идентификатор',nullable:false})
@@ -22,9 +21,6 @@ export class SocialLink {
 
     @HideField()
     type!: string;
-
-    @HideField()
-    profileId!: string;
 
     @Field(() => String, {description:'Подпись ссылки',nullable:false})
     label!: string;
@@ -39,5 +35,5 @@ export class SocialLink {
     kind!: `${SocialKind}`;
 
     @HideField()
-    profile?: Identity<Profile>;
+    profileSocialLinks?: Array<ProfileSocialLink>;
 }
