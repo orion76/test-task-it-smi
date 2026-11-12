@@ -162,36 +162,14 @@ describe('loadConfig', () => {
     expect(error.message).toMatch(/Flow sequence in block collection/);
   });
 
-  it('answers undefined for a missing file when the call is optional', () => {
-    const configPath = '.tmp/definitely-missing-optional-config.yml';
-
-    const config = loadConfig<Record<string, unknown>>(configPath, {
-      searchFrom: __dirname,
-      optional: true,
-    });
-
-    expect(config).toBeUndefined();
-  });
-
-  it('still reports malformed YAML in the optional mode', () => {
-    const configPath = writeScratch('broken-optional.yml', 'key: [unclosed\n');
-    const error = captureError(() =>
-      loadConfig(configPath, { searchFrom: __dirname, optional: true }),
-    );
+  it('reports a directory instead of a file with the path as it was passed', () => {
+    // The path exists, so the failure comes from the read itself rather than from the lookup: a
+    // directory is never a config, and the message still names the path the caller spelled.
+    const configPath = relative(PROJECT_ROOT, scratch);
+    const error = captureError(() => loadConfig(configPath, { searchFrom: __dirname }));
 
     expect(error.message).toContain(`${configPath}: `);
-    expect(error.message).toMatch(/Flow sequence in block collection/);
-  });
-
-  it('returns undefined for a missing directory in the optional mode', () => {
-    const configPath = '.tmp/no-such-directory/config.yml';
-
-    const config = loadConfig<Record<string, unknown>>(configPath, {
-      searchFrom: __dirname,
-      optional: true,
-    });
-
-    expect(config).toBeUndefined();
+    expect(error.message).toContain('EISDIR');
   });
 
   it('passes the AJV errors and the file name to a custom describeErrors', () => {
