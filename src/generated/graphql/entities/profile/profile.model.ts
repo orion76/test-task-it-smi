@@ -25,7 +25,7 @@ export class Profile {
     type!: string;
 
     /**
-     * Kebab-case latin key of the idempotent profile upsert.
+     * Latin kebab-case identifier of the profile.
      */
     @HideField()
     slug!: string;

@@ -58,13 +58,14 @@ const config = {
   // Доменные ограничения поверх выведенных правил: по модели (`Skill`) и по полю (`Profile.slug`).
   overrides: {
     // Модель: описание импорта дополняет `///` из `schema.prisma`. Пару `profileId` + `name` БД
-    // держит уникальной (`@@unique`), поэтому описание импорта называет `name` ключом.
+    // держит уникальной (`@@unique`), поэтому описание импорта говорит об уникальности `name`
+    // в пределах профиля.
     Skill: {
       description:
-        'Skill of the business card. `name` is the natural key of the idempotent upsert ' +
-        'together with the profile id.',
+        'Skill of the business card. The pair of `name` and the profile id is unique in the ' +
+        'database, so one profile lists the same skill once.',
     },
-    // Kebab-case латиница: `slug` — натуральный ключ upsert профиля, поэтому формат проверяется.
+    // Kebab-case латиница: `slug` — публичный идентификатор профиля, поэтому формат проверяется.
     'Profile.slug': {
       type: 'string',
       pattern: '^[a-z0-9]+(-[a-z0-9]+)*$',

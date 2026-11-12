@@ -1,6 +1,6 @@
 // Prisma schema for the business-card domain.
 // Mirrors the data model fixed in tz-detail.md §5: five models, one enum, no extra fields.
-// The same schema is used by the NestJS data layer and by the idempotent seed (prisma/seed/main.ts).
+// The same schema is used by the NestJS data layer and by the seed (prisma/seed/main.ts).
 
 generator client {
   provider = "prisma-client-js"
@@ -71,7 +71,7 @@ datasource db {
 model Profile {
   id          String   @id @default(uuid())
   type        String   @default("profile")
-  /// Kebab-case latin key of the idempotent profile upsert.
+  /// Latin kebab-case identifier of the profile.
   slug        String   @unique
   name        String
   description String

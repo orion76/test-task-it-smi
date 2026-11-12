@@ -46,7 +46,7 @@ $defs:
       slug:
         type: string
         pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
-        description: Kebab-case latin key of the idempotent profile upsert.
+        description: Latin kebab-case identifier of the profile.
       name:
         type: string
         minLength: 1
@@ -92,7 +92,7 @@ $defs:
         description: 'Kind of the link: one of the `SocialKind` values.'
   skill:
     type: object
-    description: Skill of the business card. `name` is the natural key of the idempotent upsert together with the profile id.
+    description: Skill of the business card. The pair of `name` and the profile id is unique in the database, so one profile lists the same skill once.
     additionalProperties: false
     required:
       - name
