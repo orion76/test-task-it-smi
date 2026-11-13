@@ -1,0 +1,53 @@
+# src/generated/config/dictionaries.schema.yml — JSON Schema артефакта dictionaries.yml.
+#
+# Файл собран генератором prisma/generators/seed-schema/seed-schema.generator.mts вместе с самим
+# артефактом: форму документа задаёт генератор, а значение `version` берётся из его константы
+# DICTIONARIES_VERSION. Руками не редактируется: правка теряется при `prisma generate` и ловится
+# тестом паритета tests/unit/generated/artifacts.parity.spec.ts.
+#
+# Читает файл сидинг (AJV, prisma/seed/dictionaries/dictionaries.reader.ts): он проверяет
+# src/generated/config/dictionaries.yml и называет нарушение путём внутри файла.
+
+$schema: http://json-schema.org/draft-07/schema#
+$id: https://it-smi.local/schema/dictionaries.schema.yml
+title: Dictionaries
+description: 'Format of src/generated/config/dictionaries.yml: the dictionaries of the import file and the tables that tie them to the parent that lists them. The schema describes the shape the seed relies on; whether the named models and columns exist is checked by the generator against the datamodel.'
+type: object
+additionalProperties: false
+required:
+  - version
+  - dictionaries
+properties:
+  version:
+    type: integer
+    const: 1
+    description: Format version, written from DICTIONARIES_VERSION of the generator.
+  dictionaries:
+    type: object
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - link
+      properties:
+        key:
+          type: string
+          minLength: 1
+        link:
+          type: object
+          additionalProperties: false
+          required:
+            - model
+            - parent
+            - target
+          properties:
+            model:
+              type: string
+              minLength: 1
+            parent:
+              type: string
+              minLength: 1
+            target:
+              type: string
+              minLength: 1

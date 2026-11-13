@@ -1,8 +1,9 @@
 /**
  * Prisma generator that writes the inputs of the seed from the DMMF, so `schema.prisma` stays the
  * single source of truth about the shape of the domain: the JSON Schema of `data/profile.yml`
- * (`src/generated/config/profile-data.schema.yml`) and the dictionaries with their tie tables
- * (`src/generated/config/dictionaries.yml`). Everything Prisma cannot express comes from
+ * (`src/generated/config/profile-data.schema.yml`), the dictionaries with their tie tables
+ * (`src/generated/config/dictionaries.yml`) and the schema of that artifact
+ * (`src/generated/config/dictionaries.schema.yml`). Everything Prisma cannot express comes from
  * `seed-schema.config.mts`:
  * the root envelope, the service columns kept out of the import file, the shared fragments, the domain
  * rules and the dictionaries.
@@ -13,8 +14,13 @@ import { basename, dirname, join } from 'node:path';
 import generatorHelper from '@prisma/generator-helper';
 import type { GeneratorManifest, GeneratorOptions } from '@prisma/generator-helper';
 
-import { DEFAULT_OUTPUT, DICTIONARIES_FILE_NAME } from './constants.mts';
+import {
+  DEFAULT_OUTPUT,
+  DICTIONARIES_FILE_NAME,
+  DICTIONARIES_SCHEMA_FILE_NAME,
+} from './constants.mts';
 import { renderDictionaries } from './dictionaries.artifact.mts';
+import { renderDictionariesSchema } from './dictionaries.schema.mts';
 import { dictionarySpecs } from './dictionaries.mts';
 import { render } from './document.builder.mts';
 import config from './seed-schema.config.mts';
@@ -41,6 +47,7 @@ generatorHandler({
       options.generator.output?.value ?? join(dirname(options.schemaPath), DEFAULT_OUTPUT);
     const file = join(directory, basename(config.output));
     const dictionariesFile = join(directory, DICTIONARIES_FILE_NAME);
+    const dictionariesSchemaFile = join(directory, DICTIONARIES_SCHEMA_FILE_NAME);
     const datamodel = options.dmmf.datamodel;
 
     mkdirSync(directory, { recursive: true });
@@ -50,9 +57,11 @@ generatorHandler({
       renderDictionaries(dictionarySpecs(datamodel.models)),
       'utf8',
     );
+    writeFileSync(dictionariesSchemaFile, renderDictionariesSchema(), 'utf8');
 
     console.log(`seed-schema: ${file}`);
     console.log(`seed-schema: ${dictionariesFile}`);
+    console.log(`seed-schema: ${dictionariesSchemaFile}`);
 
     return Promise.resolve();
   },

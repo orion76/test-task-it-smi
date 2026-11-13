@@ -16,3 +16,15 @@ export interface IDictionarySpec {
   key: string;
   link: IDictionaryLink;
 }
+
+/** One entry of the dictionaries artifact: the key column of a dictionary and its tie table. */
+export interface IDictionaryEntry {
+  key: string;
+  link: IDictionaryLink;
+}
+
+/** Document of the dictionaries artifact, as the schema the generator writes describes it. */
+export interface IDictionariesDocument {
+  version: number;
+  dictionaries: Record<string, IDictionaryEntry>;
+}

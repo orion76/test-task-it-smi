@@ -1,7 +1,7 @@
 /**
- * Wording of the AJV violations of the data file: the path of the offending field and the reason, read
- * from the keyword the schema failed on. Nothing here knows a specific property of the domain, and the
- * file itself is named by the caller (`prisma/seed/main.ts`).
+ * Wording of the AJV violations of the data file: the reason read from the keyword the schema failed
+ * on. Nothing here knows a specific property of the domain; the path of the field comes from
+ * `shared/path`, and the file itself is named by the caller (`prisma/seed/main.ts`).
  */
 import type { ErrorObject } from 'ajv';
 
@@ -9,28 +9,6 @@ import { alternativesOf, isJsonSchema, resolvePointer } from '../schema/json-sch
 import type { IJsonSchema } from '../schema/types';
 import { joinTypeNames, typeName } from '../shared/ajv-type-names';
 import { MAX_DESCRIPTION_DEPTH } from './constants';
-
-/**
- * Converts the AJV `instancePath` (`/profile/<collection>/0/<property>`) to path segments.
- * `required` and `additionalProperties` point at the parent object, so the offending key is
- * appended to keep the message anchored at the property that has to be fixed.
- */
-export function errorSegments(error: ErrorObject): string[] {
-  const segments = error.instancePath === '' ? [] : error.instancePath.slice(1).split('/');
-  const params = error.params as Record<string, unknown>;
-
-  const decoded = segments.map((segment) => segment.replace(/~1/g, '/').replace(/~0/g, '~'));
-
-  if (error.keyword === 'required') {
-    decoded.push(String(params.missingProperty));
-  }
-
-  if (error.keyword === 'additionalProperties') {
-    decoded.push(String(params.additionalProperty));
-  }
-
-  return decoded;
-}
 
 /**
  * Keeps the report readable: the sub-errors of a union describe alternatives that are not required

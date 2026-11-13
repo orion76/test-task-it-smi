@@ -47,6 +47,17 @@ export const DICTIONARY_LINK_KEYS: ReadonlySet<string> = new Set(['model', 'pare
 /** Artifact of the `dictionaries` block: written next to the schema of the import file. */
 export const DICTIONARIES_FILE_NAME = 'dictionaries.yml';
 
+/** JSON Schema of the artifact: the seed validates the file it reads instead of parsing it by hand. */
+export const DICTIONARIES_SCHEMA_FILE_NAME = 'dictionaries.schema.yml';
+
+/**
+ * Format version of the dictionaries artifact. The generator writes it into the artifact and into the
+ * schema of the artifact, so the two cannot drift apart; the seed reads no version of its own — the
+ * schema rejects another value. The value lives here, because the artifact is written from the
+ * generator: the seed is compiled as CommonJS and cannot be imported by the generator at runtime.
+ */
+export const DICTIONARIES_VERSION = 1;
+
 /** Header of the dictionaries artifact: where the block comes from and who reads it. */
 export const DICTIONARIES_HEADER = [
   `# src/generated/config/${DICTIONARIES_FILE_NAME} — справочники и их таблицы связи.`,
@@ -59,6 +70,19 @@ export const DICTIONARIES_HEADER = [
   '#',
   '# Читает файл сидинг (prisma/seed/dictionaries/dictionaries.reader.ts): строку справочника он вставляет',
   '# один раз на значение ключа, строку связи — по полученному id.',
+].join('\n');
+
+/** Header of the schema of the dictionaries artifact: its shape and who validates against it. */
+export const DICTIONARIES_SCHEMA_HEADER = [
+  `# src/generated/config/${DICTIONARIES_SCHEMA_FILE_NAME} — JSON Schema артефакта ${DICTIONARIES_FILE_NAME}.`,
+  '#',
+  '# Файл собран генератором prisma/generators/seed-schema/seed-schema.generator.mts вместе с самим',
+  '# артефактом: форму документа задаёт генератор, а значение `version` берётся из его константы',
+  '# DICTIONARIES_VERSION. Руками не редактируется: правка теряется при `prisma generate` и ловится',
+  '# тестом паритета tests/unit/generated/artifacts.parity.spec.ts.',
+  '#',
+  '# Читает файл сидинг (AJV, prisma/seed/dictionaries/dictionaries.reader.ts): он проверяет',
+  `# src/generated/config/${DICTIONARIES_FILE_NAME} и называет нарушение путём внутри файла.`,
 ].join('\n');
 
 /** Keys `root` may contain. */

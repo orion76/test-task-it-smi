@@ -2,11 +2,11 @@ import type { ErrorObject, ValidateFunction } from 'ajv';
 
 import type { IJsonSchema } from '../schema/types';
 import { toErrorMessage } from '../shared/error-message';
-import { formatPath } from '../shared/path';
+import { errorSegments, formatPath } from '../shared/path';
 import { SeedError } from '../shared/seed.error';
 import { AJV } from './constants';
 import type { IDataValidator } from './types';
-import { describeError, errorSegments, selectErrors } from './violation.messages';
+import { describeError, selectErrors } from './violation.messages';
 
 /**
  * Validates the parsed data file against the JSON Schema read from disk; every message names the path

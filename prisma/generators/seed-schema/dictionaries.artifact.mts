@@ -5,7 +5,7 @@
  */
 import { stringify } from 'yaml';
 
-import { DICTIONARIES_HEADER } from './constants.mts';
+import { DICTIONARIES_HEADER, DICTIONARIES_VERSION } from './constants.mts';
 import type { IDictionaryEntry, IDictionarySpec } from './types.mts';
 
 /**
@@ -21,7 +21,7 @@ export function renderDictionaries(specs: readonly IDictionarySpec[]): string {
     dictionaries[spec.model] = { key: spec.key, link: spec.link };
   }
 
-  const document = { version: 1, dictionaries };
+  const document = { version: DICTIONARIES_VERSION, dictionaries };
 
   return `${DICTIONARIES_HEADER}\n\n${stringify(document, { lineWidth: 0, singleQuote: true })}`;
 }
