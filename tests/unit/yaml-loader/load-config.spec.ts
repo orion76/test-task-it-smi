@@ -10,9 +10,9 @@ import { PROJECT_ROOT } from '../support/project-root';
 
 /**
  * The spec imports the package source (`packages/yaml-loader/src/index.ts`) rather than the build
- * artifact of `lib/`: `lib/` is built locally with `npm run build:lib` and is not tracked by git
- * (the directory is listed in `.gitignore`), so a test that required it would fail on a clean
- * checkout, and `ts-jest` compiles the source anyway.
+ * artifact of `lib/`: `lib/` is committed to the repository, produced by `npm run build:lib`, and
+ * its freshness is guarded by the parity spec `tests/unit/yaml-loader/lib.parity.spec.ts`. The
+ * spec keeps reading the source, so it needs no build step: `ts-jest` compiles it anyway.
  *
  * Every config written by the test lives in `.tmp/` (gitignored) and is addressed the way the library
  * expects: relative to the project root. The project root is reached through `searchFrom: __dirname`,
