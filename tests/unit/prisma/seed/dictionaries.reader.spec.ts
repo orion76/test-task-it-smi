@@ -1,9 +1,11 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { join, relative } from 'node:path';
 
 import { readDictionaries } from '@seed/dictionaries/dictionaries.reader';
 import { DICTIONARIES_FILE, DICTIONARIES_VERSION } from '@seed/shared/constants';
 import { SeedError } from '@seed/shared/seed.error';
+
+import { PROJECT_ROOT } from '../../support/project-root';
 
 /**
  * The artifact `config/dictionaries.yml` is generated, so its `version` is checked the way the other
@@ -12,7 +14,6 @@ import { SeedError } from '@seed/shared/seed.error';
  * `.tmp/` (gitignored) and are addressed relative to the project root, as `loadConfig` expects.
  */
 
-const PROJECT_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const SCRATCH_ROOT = join(PROJECT_ROOT, '.tmp');
 
 /** The `dictionaries` block of the real artifact, which every broken copy keeps unchanged. */

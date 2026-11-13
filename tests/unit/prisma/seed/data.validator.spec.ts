@@ -7,6 +7,8 @@ import { DataValidator } from '@seed/data/data.validator';
 import type { IJsonSchema } from '@seed/schema/types';
 import { SeedError } from '@seed/shared/seed.error';
 
+import { PROJECT_ROOT } from '../../support/project-root';
+
 /**
  * The validator is fed the real files: the schema is a YAML document (`config/profile-data.schema.yml`)
  * and the content is `data/profile.yml`, which is the single source of the expected structure. The
@@ -17,7 +19,6 @@ import { SeedError } from '@seed/shared/seed.error';
  * the checks are about structure, paths of violations and the accepted alternatives.
  */
 
-const PROJECT_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const SCHEMA_PATH = resolve(PROJECT_ROOT, 'config', 'profile-data.schema.yml');
 const DATA_PATH = resolve(PROJECT_ROOT, 'data', 'profile.yml');
 

@@ -11,14 +11,12 @@
  */
 import { spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { parse } from 'yaml';
 
+import { PROJECT_ROOT } from './project-root';
 import type { ITemporaryProject, UHarnessResult, URunner } from './types';
-
-/** Absolute path of the project the specs belong to. */
-const PROJECT_ROOT = resolve(__dirname, '..', '..', '..');
 
 /**
  * Creates the copy: `package.json` (the project root marker), `prisma/generators`, `src`, the API

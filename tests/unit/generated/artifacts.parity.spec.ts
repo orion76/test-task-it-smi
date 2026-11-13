@@ -27,7 +27,9 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
+
+import { PROJECT_ROOT } from '../support/project-root';
 
 /**
  * Schema of the API config, relative to the project root: the artifact of `apiFields`, which lives
@@ -53,7 +55,6 @@ const ARTIFACTS = [
  */
 const ARTIFACT_DIRECTORIES = ['src/generated/graphql'] as const;
 
-const PROJECT_ROOT = resolve(__dirname, '..', '..', '..');
 const COPY_ROOT = join(PROJECT_ROOT, '.tmp', 'unit', 'artifacts-parity');
 const SELF_CHECK_ROOT = join(PROJECT_ROOT, '.tmp', 'unit', 'artifacts-parity-self-check');
 

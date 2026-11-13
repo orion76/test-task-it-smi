@@ -1,10 +1,12 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { join, relative } from 'node:path';
 
 import type { ErrorObject } from 'ajv';
 import { parse } from 'yaml';
 
 import { loadConfig } from '@lib';
+
+import { PROJECT_ROOT } from '../support/project-root';
 
 /**
  * The spec imports the package source (`packages/yaml-loader/src/index.ts`) rather than the build
@@ -17,7 +19,6 @@ import { loadConfig } from '@lib';
  * so a scratch directory inside the project does not need a `package.json` of its own.
  */
 
-const PROJECT_ROOT = resolve(__dirname, '..', '..', '..');
 const SCRATCH_ROOT = join(PROJECT_ROOT, '.tmp');
 const CONFIG_PATH = 'config/api-fields.yml';
 const SCHEMA_PATH = 'config/api-fields.schema.yml';

@@ -6,6 +6,8 @@ import { parse } from 'yaml';
 import { assertExperiencePeriods } from '@seed/data/experience-periods.check';
 import { SeedError } from '@seed/shared/seed.error';
 
+import { PROJECT_ROOT } from '../../support/project-root';
+
 /**
  * The check owns the one rule the JSON Schema cannot state: the relation between `finished` and
  * `endedAt` of an employment record. The spec feeds it the real `data/profile.yml` and breaks one
@@ -16,7 +18,6 @@ import { SeedError } from '@seed/shared/seed.error';
  * carries both. The periods of two records may overlap, so the check never compares records.
  */
 
-const PROJECT_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const DATA_PATH = resolve(PROJECT_ROOT, 'data', 'profile.yml');
 
 const realDocument: unknown = parse(readFileSync(DATA_PATH, 'utf8'));

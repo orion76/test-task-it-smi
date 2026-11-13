@@ -11,6 +11,7 @@ import { projectRoot } from '@lib';
  * checkout, and `ts-jest` compiles the source anyway.
  */
 
+// A local root: this spec checks `projectRoot`, so its fixture must not use the helper.
 const PROJECT_ROOT = resolve(__dirname, '..', '..', '..');
 const SCRATCH_ROOT = join(PROJECT_ROOT, '.tmp');
 

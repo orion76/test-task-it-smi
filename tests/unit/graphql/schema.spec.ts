@@ -11,6 +11,8 @@ import { lexicographicSortSchema, printSchema } from 'graphql';
 import { SCHEMA_RESOLVERS } from '@src/graphql/constants';
 import { HealthResolver } from '@src/features/health/health.resolver';
 
+import { PROJECT_ROOT } from '../support/project-root';
+
 /**
  * The committed SDL is a build artifact of the resolvers alone: the application no longer writes it
  * (`autoSchemaFile: true` in `app.module.ts`), so nothing else would notice a field that exists in
@@ -29,7 +31,6 @@ import { HealthResolver } from '@src/features/health/health.resolver';
  * the list would let the check stay green on a schema the application does not serve.
  */
 
-const PROJECT_ROOT = resolve(__dirname, '..', '..', '..');
 const SDL_PATH = resolve(PROJECT_ROOT, 'src', 'schema.gql');
 
 /** The file header Nest writes; the blank line after it is part of it. */
