@@ -1,0 +1,19 @@
+{
+  // Файл нужен только редактору: tsserver ищет проект по имени `jsconfig.json` для JS-файлов вне
+  // `src/` (в первую очередь `eslint.config.mjs` под `// @ts-check`). Для `.ts` приоритетнее
+  // `tsconfig.json`, поэтому этот проект их не перехватывает.
+  "compilerOptions": {
+    // `types` задан явно: TypeScript 6 не подтягивает пакеты `@types` неявно, а конфигам и
+    // скриптам нужны `process`, `node:fs` и `import.meta.dirname` из `@types/node`.
+    "types": ["node"],
+    // `checkJs` не включается: проверяются только файлы с `// @ts-check`. Глобальная проверка
+    // подсветила бы необъявленные параметры в обычном JS, который проверять не собирались.
+    "allowJs": true,
+    "noEmit": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "ES2023"
+  },
+  "include": ["*.mjs", "*.js", "scripts/**/*.mjs"],
+  "exclude": ["node_modules", "dist"]
+}
