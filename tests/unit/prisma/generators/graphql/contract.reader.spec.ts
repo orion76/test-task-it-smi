@@ -70,7 +70,7 @@ describe('readContract', () => {
 
     expect(Object.keys(contract.queries)).toEqual(['profile', 'profiles']);
     expect(contract.queries.profile).toEqual({
-      description: 'The business-card profile.',
+      description: 'Визитка владельца',
       entity: 'profile',
       kind: 'one',
     });

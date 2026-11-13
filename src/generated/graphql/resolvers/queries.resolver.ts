@@ -17,12 +17,12 @@ export class ProfileQueriesResolver extends EntityQueries {
     super(query);
   }
 
-  @Query(() => Profile, { description: 'The business-card profile.' })
+  @Query(() => Profile, { description: 'Визитка владельца' })
   profile(): Promise<IEntity> {
     return this.findOne('profile');
   }
 
-  @Query(() => [Profile], { description: 'One page of business-card profiles.' })
+  @Query(() => [Profile], { description: 'Одна страница списка визиток' })
   profiles(
     @Args('limit', PAGE_LIMIT_ARG) limit: number,
     @Args('offset', PAGE_OFFSET_ARG) offset: number,

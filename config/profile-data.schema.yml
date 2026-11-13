@@ -32,7 +32,7 @@ $defs:
     pattern: ^https?://
   profile:
     type: object
-    description: Business-card owner with nested collections.
+    description: Владелец визитки
     additionalProperties: false
     required:
       - slug
@@ -46,7 +46,7 @@ $defs:
       slug:
         type: string
         pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
-        description: Latin kebab-case identifier of the profile.
+        description: Идентификатор визитки латиницей в kebab-case.
       name:
         type: string
         minLength: 1
@@ -71,7 +71,7 @@ $defs:
           $ref: '#/$defs/project'
   socialLink:
     type: object
-    description: External link of the profile owner. A dictionary row shared by the profiles that list it.
+    description: Внешняя ссылка — строка справочника, общая для профилей, которые её указывают
     additionalProperties: false
     required:
       - label
@@ -89,7 +89,7 @@ $defs:
           - LINKEDIN
           - WEBSITE
           - OTHER
-        description: 'Kind of the link: one of the `SocialKind` values.'
+        description: Тип ссылки — одно из значений `SocialKind`.
   skill:
     type: object
     description: Skill of the business card. The name identifies the dictionary row and is unique in the database, so one profile lists the same skill once.
@@ -104,10 +104,10 @@ $defs:
         type:
           - string
           - 'null'
-        description: 'Free-form grouping: "language", "backend", "database", …'
+        description: 'Свободная группировка: «language», «backend», «database», …'
   experience:
     type: object
-    description: Employment record of the profile owner.
+    description: Место работы владельца визитки
     additionalProperties: false
     required:
       - company
@@ -124,7 +124,7 @@ $defs:
       startedAt:
         type: string
         format: date
-        description: Calendar date `YYYY-MM-DD`. A period of employment has neither a time of day nor a time zone.
+        description: Календарная дата в формате `YYYY-MM-DD`. У периода работы нет ни времени суток, ни часового пояса.
       endedAt:
         anyOf:
           - type: string
@@ -133,21 +133,21 @@ $defs:
               $data: 1/startedAt
           - type: 'null'
         description: |-
-          Calendar date `YYYY-MM-DD`, or `null` while the job is current. The pair `finished`/`endedAt`
-          is checked by the seed when it writes a row; a read validates nothing and returns the row as is.
+          Календарная дата в формате `YYYY-MM-DD`, или `null`, пока работа является текущей. Пару
+          `finished`/`endedAt` проверяет сидинг при записи строки; чтение ничего не проверяет и возвращает строку как есть.
       finished:
         type: boolean
         description: |-
-          Whether the employment is over. `false` marks a current job, and then `endedAt` is empty; an
-          owner may hold several jobs at once, so this is a fact about the row, not about a missing date.
-          `NOT NULL DEFAULT false`, so rows written before the flag existed read as `false`.
+          Признак завершённого места работы. `false` — работаю по сей день, и тогда `endedAt` пуст; у владельца
+          может быть несколько мест работы одновременно, поэтому это факт о строке, а не о недостающей дате.
+          `NOT NULL DEFAULT false`, поэтому строки, записанные до появления признака, читаются как `false`.
       achievements:
         type: array
         items:
           type: string
   project:
     type: object
-    description: Project of the profile owner. The link and the description are optional.
+    description: Проект владельца визитки
     additionalProperties: false
     required:
       - name

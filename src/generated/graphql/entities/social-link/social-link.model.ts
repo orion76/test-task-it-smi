@@ -11,9 +11,9 @@ import { SocialKind } from '../prisma/social-kind.enum';
 import { ProfileSocialLink } from '../profile-social-link/profile-social-link.model';
 
 /**
- * External link of the profile owner. A dictionary row shared by the profiles that list it.
+ * Внешняя ссылка — строка справочника, общая для профилей, которые её указывают
  */
-@ObjectType({description:'External link of the profile owner. A dictionary row shared by the profiles that list it.'})
+@ObjectType({description:'Внешняя ссылка — строка справочника, общая для профилей, которые её указывают'})
 export class SocialLink {
 
     @Field(() => ID, {description:'Идентификатор',nullable:false})
@@ -29,7 +29,7 @@ export class SocialLink {
     url!: string;
 
     /**
-     * Kind of the link: one of the `SocialKind` values.
+     * Тип ссылки — одно из значений `SocialKind`.
      */
     @Field(() => SocialKind, {description:'Тип ссылки — GITHUB, LINKEDIN, WEBSITE или OTHER',nullable:false})
     kind!: `${SocialKind}`;

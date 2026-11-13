@@ -11,9 +11,9 @@ import { Profile } from '../profile/profile.model';
 import type { Identity } from 'identity-type';
 
 /**
- * Project of the profile owner. The link and the description are optional.
+ * Проект владельца визитки
  */
-@ObjectType({description:'Project of the profile owner. The link and the description are optional.'})
+@ObjectType({description:'Проект владельца визитки'})
 export class Project {
 
     @Field(() => ID, {description:'Идентификатор',nullable:false})

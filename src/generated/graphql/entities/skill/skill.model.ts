@@ -10,9 +10,9 @@ import { HideField } from '@nestjs/graphql';
 import { ProfileSkill } from '../profile-skill/profile-skill.model';
 
 /**
- * Skill of the profile owner. A dictionary row shared by the profiles that list it.
+ * Навык — строка справочника, общая для профилей, которые его указывают
  */
-@ObjectType({description:'Skill of the profile owner. A dictionary row shared by the profiles that list it.'})
+@ObjectType({description:'Навык — строка справочника, общая для профилей, которые его указывают'})
 export class Skill {
 
     @Field(() => ID, {description:'Идентификатор',nullable:false})
@@ -25,7 +25,7 @@ export class Skill {
     name!: string;
 
     /**
-     * Free-form grouping: "language", "backend", "database", …
+     * Свободная группировка: «language», «backend», «database», …
      */
     @Field(() => String, {description:'Категория навыка; null — не указана',nullable:true})
     category!: string | null;

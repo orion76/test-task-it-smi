@@ -7,7 +7,7 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
-"""Employment record of the profile owner."""
+"""Место работы владельца визитки"""
 type Experience {
   """Достижения"""
   achievements: [String!]!
@@ -34,12 +34,13 @@ type Experience {
   startedAt: DateTime!
 }
 
-"""Application health status."""
+"""Состояние работоспособности приложения."""
 type Health {
+  """Состояние приложения; ok — приложение работает."""
   status: String!
 }
 
-"""Business-card owner with nested collections."""
+"""Владелец визитки"""
 type Profile {
   """Краткое описание — специализация, стек, чем полезен"""
   description: String!
@@ -63,9 +64,7 @@ type Profile {
   skills: [Skill!]!
 }
 
-"""
-Project of the profile owner. The link and the description are optional.
-"""
+"""Проект владельца визитки"""
 type Project {
   """Описание проекта; null — не указано"""
   description: String
@@ -84,25 +83,23 @@ type Project {
 }
 
 type Query {
-  """Application health status."""
+  """Состояние работоспособности приложения."""
   health: Health!
 
-  """The business-card profile."""
+  """Визитка владельца"""
   profile: Profile!
 
-  """One page of business-card profiles."""
+  """Одна страница списка визиток"""
   profiles(
-    """Maximum number of rows to return (1-100)."""
+    """Максимальное число строк на страницу (1-100)."""
     limit: Int! = 10
 
-    """Number of rows to skip, for paging through the list."""
+    """Число пропускаемых строк для перехода по страницам списка."""
     offset: Int! = 0
   ): [Profile!]!
 }
 
-"""
-Skill of the profile owner. A dictionary row shared by the profiles that list it.
-"""
+"""Навык — строка справочника, общая для профилей, которые его указывают"""
 type Skill {
   """Категория навыка; null — не указана"""
   category: String
@@ -114,6 +111,7 @@ type Skill {
   name: String!
 }
 
+"""Тип ссылки — GITHUB, LINKEDIN, WEBSITE или OTHER"""
 enum SocialKind {
   GITHUB
   LINKEDIN
@@ -122,7 +120,7 @@ enum SocialKind {
 }
 
 """
-External link of the profile owner. A dictionary row shared by the profiles that list it.
+Внешняя ссылка — строка справочника, общая для профилей, которые её указывают
 """
 type SocialLink {
   """Идентификатор"""

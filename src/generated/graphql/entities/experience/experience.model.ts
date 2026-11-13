@@ -11,9 +11,9 @@ import { Profile } from '../profile/profile.model';
 import type { Identity } from 'identity-type';
 
 /**
- * Employment record of the profile owner.
+ * Место работы владельца визитки
  */
-@ObjectType({description:'Employment record of the profile owner.'})
+@ObjectType({description:'Место работы владельца визитки'})
 export class Experience {
 
     @Field(() => ID, {description:'Идентификатор',nullable:false})
@@ -32,22 +32,22 @@ export class Experience {
     position!: string;
 
     /**
-     * Calendar date `YYYY-MM-DD`. A period of employment has neither a time of day nor a time zone.
+     * Календарная дата в формате `YYYY-MM-DD`. У периода работы нет ни времени суток, ни часового пояса.
      */
     @Field(() => Date, {description:'Дата начала работы',nullable:false})
     startedAt!: Date;
 
     /**
-     * Calendar date `YYYY-MM-DD`, or `null` while the job is current. The pair `finished`/`endedAt`
-     * is checked by the seed when it writes a row; a read validates nothing and returns the row as is.
+     * Календарная дата в формате `YYYY-MM-DD`, или `null`, пока работа является текущей. Пару
+     * `finished`/`endedAt` проверяет сидинг при записи строки; чтение ничего не проверяет и возвращает строку как есть.
      */
     @Field(() => Date, {description:'Дата окончания; null — работаю по сей день',nullable:true})
     endedAt!: Date | null;
 
     /**
-     * Whether the employment is over. `false` marks a current job, and then `endedAt` is empty; an
-     * owner may hold several jobs at once, so this is a fact about the row, not about a missing date.
-     * `NOT NULL DEFAULT false`, so rows written before the flag existed read as `false`.
+     * Признак завершённого места работы. `false` — работаю по сей день, и тогда `endedAt` пуст; у владельца
+     * может быть несколько мест работы одновременно, поэтому это факт о строке, а не о недостающей дате.
+     * `NOT NULL DEFAULT false`, поэтому строки, записанные до появления признака, читаются как `false`.
      */
     @Field(() => Boolean, {description:'Признак завершённого места работы; false — работаю по сей день',nullable:false})
     finished!: boolean;

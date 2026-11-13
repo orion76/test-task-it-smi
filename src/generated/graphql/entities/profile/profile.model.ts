@@ -13,9 +13,9 @@ import { ProfileSkill } from '../profile-skill/profile-skill.model';
 import { ProfileSocialLink } from '../profile-social-link/profile-social-link.model';
 
 /**
- * Business-card owner with nested collections.
+ * Владелец визитки
  */
-@ObjectType({description:'Business-card owner with nested collections.'})
+@ObjectType({description:'Владелец визитки'})
 export class Profile {
 
     @Field(() => ID, {description:'Идентификатор',nullable:false})
@@ -25,7 +25,7 @@ export class Profile {
     type!: string;
 
     /**
-     * Latin kebab-case identifier of the profile.
+     * Идентификатор визитки латиницей в kebab-case.
      */
     @HideField()
     slug!: string;

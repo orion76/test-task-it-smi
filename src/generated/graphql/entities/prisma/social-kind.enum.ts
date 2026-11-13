@@ -13,4 +13,4 @@ export enum SocialKind {
 }
 
 
-registerEnumType(SocialKind, { name: 'SocialKind', description: undefined })
+registerEnumType(SocialKind, { name: 'SocialKind', description: "Тип ссылки — GITHUB, LINKEDIN, WEBSITE или OTHER" })
