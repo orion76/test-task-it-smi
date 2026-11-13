@@ -387,6 +387,22 @@ describe('DataWriter', () => {
     expect(harness.delegateOf('ProfileSocialLink').create).not.toHaveBeenCalled();
   });
 
+  it('adds the path of the element when the tie row cannot be written', async () => {
+    // The tie insert no longer receives the place: the caller that knows the index adds it, so the
+    // context of a failed write has to arrive from `writeDictionaryCollection`.
+    const harness = createHarness(DATA_MODEL);
+    const writer = new DataWriter(harness.prisma, DATA_MODEL, DICTIONARIES);
+
+    harness
+      .delegateOf('ProfileSocialLink')
+      .create.mockRejectedValueOnce(new Error('the connection was closed'));
+
+    const failure = await writer.write(SOURCE).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(SeedError);
+    expect((failure as SeedError).message).toBe('profile.links[0]: the connection was closed');
+  });
+
   it('counts the rows of every model in the summary', async () => {
     const harness = createHarness(DATA_MODEL);
     const writer = new DataWriter(harness.prisma, DATA_MODEL, DICTIONARIES);

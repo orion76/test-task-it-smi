@@ -72,6 +72,7 @@ class RecordingPort implements IEntityQueryPort {
 const PROFILE_A: IEntity = { id: 'profile-a', type: 'profile' };
 const PROFILE_B: IEntity = { id: 'profile-b', type: 'profile' };
 const PROFILE_C: IEntity = { id: 'profile-c', type: 'profile' };
+const PROFILE_D: IEntity = { id: 'profile-d', type: 'profile' };
 
 const SKILL_NODE: ISkillRow = { id: 'skill-node', type: 'skill', name: 'Node.js' };
 const SKILL_TS: ISkillRow = { id: 'skill-ts', type: 'skill', name: 'TypeScript' };
@@ -217,6 +218,41 @@ describe('EntityLoader', () => {
 
     expect(children).toEqual([]);
     expect(Array.isArray(children)).toBe(true);
+  });
+
+  it('skips the read of the rows when no parent of the batch has a tie', async () => {
+    // The second query exists to read the rows the ties name; an empty set of targets would ask the
+    // database for nothing, so the batch ends after the tie read.
+    const port = new RecordingPort(tables());
+    const loader = new EntityLoader(port);
+
+    const [c, d] = await Promise.all([
+      loader.load(PROFILE_C, 'skills'),
+      loader.load(PROFILE_D, 'skills'),
+    ]);
+
+    expect(port.calls).toHaveLength(1);
+    expect(port.calls[0].type).toBe('profileSkill');
+    expect(parentIdsOf(port.calls[0].query)).toEqual(['profile-c', 'profile-d']);
+    expect(c).toEqual([]);
+    expect(d).toEqual([]);
+  });
+
+  it('keeps both reads when one parent of the batch has a tie', async () => {
+    // The skip is a property of the whole group, not of a single parent: a batch that mixes a parent
+    // with ties and a parent without them still has targets to read, and the empty one gets its list.
+    const port = new RecordingPort(tables());
+    const loader = new EntityLoader(port);
+
+    const [a, c] = await Promise.all([
+      loader.load(PROFILE_A, 'skills'),
+      loader.load(PROFILE_C, 'skills'),
+    ]);
+
+    expect(port.calls).toHaveLength(2);
+    expect(port.calls.map((call) => call.type)).toEqual(['profileSkill', 'skill']);
+    expect(a.map((row) => row.id)).toEqual(['skill-node', 'skill-ts']);
+    expect(c).toEqual([]);
   });
 
   it('keeps two collections of one tick in separate batches', async () => {
