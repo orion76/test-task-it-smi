@@ -8,10 +8,11 @@ import { SeedError } from '@seed/shared/seed.error';
 import { PROJECT_ROOT } from '../../support/project-root';
 
 /**
- * The artifact `config/dictionaries.yml` is generated, so its `version` is checked the way the other
- * format markers are: the spec takes the real block and replaces only the `version` field, because
- * the rest of the document is what the writer addresses its tables by. The broken copies live in
- * `.tmp/` (gitignored) and are addressed relative to the project root, as `loadConfig` expects.
+ * The artifact `src/generated/config/dictionaries.yml` is generated, so its `version` is checked the
+ * way the other format markers are: the spec takes the real block and replaces only the `version`
+ * field, because the rest of the document is what the writer addresses its tables by. The broken
+ * copies live in `.tmp/` (gitignored) and are addressed relative to the project root, as
+ * `loadConfig` expects.
  */
 
 const SCRATCH_ROOT = join(PROJECT_ROOT, '.tmp');

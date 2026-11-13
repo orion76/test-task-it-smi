@@ -19,9 +19,8 @@ import { PROJECT_ROOT } from './project-root';
 import type { ITemporaryProject, UHarnessResult, URunner } from './types';
 
 /**
- * Creates the copy: `package.json` (the project root marker), `prisma/generators`, `src`, the API
- * contract and its schema. Everything is a straight copy of the working tree, so a spec never edits
- * the repository.
+ * Creates the copy: `package.json` (the project root marker), `prisma/generators`, `src` and the API
+ * contract. Everything is a straight copy of the working tree, so a spec never edits the repository.
  *
  * @param name directory name under `.tmp/unit`; unique per spec file
  * @returns the disposable project
@@ -41,11 +40,9 @@ export function createTemporaryProject(name: string): ITemporaryProject {
   });
   cpSync(join(PROJECT_ROOT, 'src'), join(root, 'src'), { recursive: true });
 
-  // The contract and the schema it is validated against are two files of `config/`: a harness that
-  // copies only the contract loses the schema and cannot check the contract at all.
-  for (const file of ['api-fields.yml', 'api-fields.schema.yml']) {
-    cpSync(join(PROJECT_ROOT, 'config', file), join(root, 'config', file));
-  }
+  // The contract is the only hand-written input of the pair: the schema it is validated against is
+  // an artifact of `prisma generate` and therefore arrives inside `src/`, copied above.
+  cpSync(join(PROJECT_ROOT, 'config', 'api-fields.yml'), join(root, 'config', 'api-fields.yml'));
 
   return {
     root,

@@ -21,7 +21,7 @@ import { PROJECT_ROOT } from '../support/project-root';
 
 const SCRATCH_ROOT = join(PROJECT_ROOT, '.tmp');
 const CONFIG_PATH = 'config/api-fields.yml';
-const SCHEMA_PATH = 'config/api-fields.schema.yml';
+const SCHEMA_PATH = 'src/generated/config/api-fields.schema.yml';
 
 /** Runs the call and returns the thrown error, failing the test when nothing was thrown. */
 function captureError(run: () => unknown): Error {

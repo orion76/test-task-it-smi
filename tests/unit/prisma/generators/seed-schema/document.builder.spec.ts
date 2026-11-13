@@ -1,10 +1,10 @@
 /**
- * `config/profile-data.schema.yml` is generated from the datamodel plus the generator config, and it
- * is what the seed validates `data/profile.yml` against at startup. The structure — models, nesting,
- * required columns, scalar types, enum values, lists — has to come from the DMMF, and only what
- * Prisma cannot express (`format: date`, the null alternative of the end date, URL patterns) may
- * come from the config. A mix-up would accept a data file the database cannot store, or reject a
- * correct one.
+ * `src/generated/config/profile-data.schema.yml` is generated from the datamodel plus the generator
+ * config, and it is what the seed validates `data/profile.yml` against at startup. The structure —
+ * models, nesting, required columns, scalar types, enum values, lists — has to come from the DMMF,
+ * and only what Prisma cannot express (`format: date`, the null alternative of the end date, URL
+ * patterns) may come from the config. A mix-up would accept a data file the database cannot store,
+ * or reject a correct one.
  */
 import { render } from '@generators/seed-schema/document.builder.mts';
 import { domainDatamodel } from '../support/datamodel';
@@ -15,7 +15,7 @@ const document = asDocument(source);
 
 describe('render', () => {
   it('starts with the header of the artifact and ends with one newline', () => {
-    expect(source.startsWith('# config/profile-data.schema.yml')).toBe(true);
+    expect(source.startsWith('# src/generated/config/profile-data.schema.yml')).toBe(true);
     expect(source.endsWith('\n')).toBe(true);
     expect(source.endsWith('\n\n')).toBe(false);
   });

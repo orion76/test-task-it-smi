@@ -1,8 +1,8 @@
 /**
  * `validateApiFields` checks `config/api-fields.yml` against the schema generated from
- * `schema.prisma` (`config/api-fields.schema.yml`): a model, a field, a column or an order key the
- * schema does not declare fails the build with the path inside the config, so a typo never silently
- * drops a field from the API.
+ * `schema.prisma` (`src/generated/config/api-fields.schema.yml`, an artifact of `prisma generate`):
+ * a model, a field, a column or an order key the schema does not declare fails the build with the
+ * path inside the config, so a typo never silently drops a field from the API.
  *
  * The happy path reads the real contract and schema in this process; every broken shape needs a
  * broken contract, which lives in a disposable copy of the project run by a harness in a child

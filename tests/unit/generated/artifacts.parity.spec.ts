@@ -1,14 +1,15 @@
 /**
- * The committed artifacts of the generators are results of the pipeline, not hand-written code: the
- * schema of the API contract, the two GraphQL resolvers, the seed data schema and the GraphQL
- * entity classes are all built from `prisma/schema.prisma` plus `config/api-fields.yml`. A
- * divergence between a fresh generation and the committed tree means the artifact was edited by
- * hand or the regeneration was forgotten, so this spec rebuilds them in a disposable copy of the
- * project under `.tmp/` and compares byte for byte with the committed ones.
+ * The committed artifacts of the generators are results of the pipeline, not hand-written code:
+ * everything under `src/generated` — the API contract schema, the seed data schema, the
+ * dictionaries, the GraphQL entity classes and the resolvers — is built from `prisma/schema.prisma`
+ * plus `config/api-fields.yml`. A divergence between a fresh generation and the committed tree means
+ * an artifact was edited by hand or the regeneration was forgotten, so this spec rebuilds them in a
+ * disposable copy of the project under `.tmp/` and compares byte for byte with the committed ones.
  *
- * The generated directories are compared as a whole: not only the content of every file, but the
- * listing itself, so a file added by hand or a file missing from the tree fails the parity the same
- * way an edited one does.
+ * The generated tree is compared as a whole: not only the content of every file, but the listing
+ * itself, so a file added by hand or a file missing from the tree fails the parity the same way an
+ * edited one does. The YAML artifacts live inside that tree, so they are covered by the same
+ * comparison and a new artifact needs no entry here.
  *
  * `src/schema.gql` is not part of the parity: it belongs to `tests/unit/graphql/schema.spec.ts`.
  *
@@ -19,7 +20,6 @@
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
-  existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -27,50 +27,25 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { isAbsolute, join, relative, sep } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 import { PROJECT_ROOT } from '../support/project-root';
 
 /**
- * Schema of the API config, relative to the project root: the artifact of `apiFields`, which lives
- * in `config/` next to the contract it validates.
+ * The generated directory the parity covers, relative to the project root: every artifact of
+ * `prisma generate` lives under this single root, so one entry covers the GraphQL tree and the YAML
+ * schemas at once. The copy loses its content before the regeneration: a generator writes files but
+ * does not own the directory, so a stale file survives a regeneration and would hide itself from
+ * the comparison.
  */
-const CONTRACT_SCHEMA = 'config/api-fields.schema.yml';
-
-/** The artifacts the parity covers, relative to the project root. */
-const ARTIFACTS = [
-  CONTRACT_SCHEMA,
-  'src/generated/graphql/resolvers/relations.resolver.ts',
-  'src/generated/graphql/resolvers/queries.resolver.ts',
-  'config/profile-data.schema.yml',
-  'config/dictionaries.yml',
-] as const;
-
-/**
- * The generated directories the parity covers, relative to the project root. The copy loses their
- * content before the regeneration: a generator writes files but does not own the directory, so a
- * stale file survives a regeneration and would hide itself from the comparison. Both GraphQL trees
- * live under one root, so the single directory covers the entity classes and the resolvers at once:
- * a file dropped by a generator cannot stay behind in a sibling directory nobody cleaned.
- */
-const ARTIFACT_DIRECTORIES = ['src/generated/graphql'] as const;
+const ARTIFACT_DIRECTORIES = ['src/generated'] as const;
 
 const COPY_ROOT = join(PROJECT_ROOT, '.tmp', 'unit', 'artifacts-parity');
 const SELF_CHECK_ROOT = join(PROJECT_ROOT, '.tmp', 'unit', 'artifacts-parity-self-check');
 
 /** Path of one artifact inside a project root. */
-function artifactOf(root: string, artifact: string): string {
+function pathIn(root: string, artifact: string): string {
   return join(root, artifact);
-}
-
-/**
- * Whether `directory` covers `path`, i.e. whether removing the directory would remove that file too.
- * Both arguments are relative to the same root.
- */
-function isInside(directory: string, path: string): boolean {
-  const difference = relative(directory, path);
-
-  return difference.length > 0 && !difference.startsWith('..') && !isAbsolute(difference);
 }
 
 /** Relative paths of every file under `root`, sorted, with `/` as the separator. */
@@ -169,31 +144,11 @@ afterAll(() => {
 });
 
 describe('parity of the committed generator artifacts', () => {
-  it('rebuilds every committed artifact byte for byte from the schema and the contract', () => {
-    for (const artifact of ARTIFACTS) {
-      expect(readFileSync(artifactOf(copyRoot, artifact), 'utf8')).toBe(
-        readFileSync(artifactOf(PROJECT_ROOT, artifact), 'utf8'),
-      );
-    }
-  });
-
-  it('rebuilds every generated directory: the same files, byte for byte', () => {
+  it('rebuilds the generated tree: the same files, byte for byte', () => {
     for (const directory of ARTIFACT_DIRECTORIES) {
-      expect(differencesOf(artifactOf(copyRoot, directory), artifactOf(PROJECT_ROOT, directory)))
+      expect(differencesOf(pathIn(copyRoot, directory), pathIn(PROJECT_ROOT, directory)))
         .toEqual([]);
     }
-  });
-
-  it('the cleanup of the generated directories leaves the API contract schema alone', () => {
-    // The cleanup removes whole directories, and the contract schema is not generated into the
-    // GraphQL tree: a directory widened past the generated files would delete it before the
-    // regeneration and hide a stale copy of it. The copy has to hold the schema after the
-    // regeneration as well.
-    for (const directory of ARTIFACT_DIRECTORIES) {
-      expect(isInside(directory, CONTRACT_SCHEMA)).toBe(false);
-    }
-
-    expect(existsSync(artifactOf(copyRoot, CONTRACT_SCHEMA))).toBe(true);
   });
 
   it('regenerating in the copy did not touch the working tree', () => {
@@ -205,7 +160,7 @@ describe('parity of the committed generator artifacts', () => {
   });
 
   it('reports a surplus, a missing and an edited file as a divergence', () => {
-    // The comparison is what the tests above rely on, so its three failure modes are checked on
+    // The comparison is what the test above relies on, so its three failure modes are checked on
     // fixtures: without this control a silently empty comparison would keep the parity green.
     const committed = join(SELF_CHECK_ROOT, 'committed');
     const generated = join(SELF_CHECK_ROOT, 'generated');

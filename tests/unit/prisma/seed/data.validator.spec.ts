@@ -10,16 +10,17 @@ import { SeedError } from '@seed/shared/seed.error';
 import { PROJECT_ROOT } from '../../support/project-root';
 
 /**
- * The validator is fed the real files: the schema is a YAML document (`config/profile-data.schema.yml`)
- * and the content is `data/profile.yml`, which is the single source of the expected structure. The
- * spec therefore never invents a document from scratch — it takes the real one and breaks one field,
- * so a failure points at the mutation and not at a hand-written fixture.
+ * The validator is fed the real files: the schema is a YAML artifact of `prisma generate`
+ * (`src/generated/config/profile-data.schema.yml`) and the content is `data/profile.yml`, which is
+ * the single source of the expected structure. The spec therefore never invents a document from
+ * scratch — it takes the real one and breaks one field, so a failure points at the mutation and not
+ * at a hand-written fixture.
  *
  * Names, companies and links are not asserted: `data/profile.yml` is content the author replaces, so
  * the checks are about structure, paths of violations and the accepted alternatives.
  */
 
-const SCHEMA_PATH = resolve(PROJECT_ROOT, 'config', 'profile-data.schema.yml');
+const SCHEMA_PATH = resolve(PROJECT_ROOT, 'src', 'generated', 'config', 'profile-data.schema.yml');
 const DATA_PATH = resolve(PROJECT_ROOT, 'data', 'profile.yml');
 
 const schema = parse(readFileSync(SCHEMA_PATH, 'utf8')) as IJsonSchema;
