@@ -16,7 +16,7 @@
     "knip": "knip",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest -c jest-e2e.config.mjs",
-    "build": "npm run build:lib && npm run prisma:generate && npm run validate:api-fields && nest build && npm run build:seed",
+    "build": "npm run build:lib && npm run validate:api-fields && npm run prisma:generate && nest build && npm run build:seed",
     "build:seed": "node -e \"require('node:fs').rmSync('dist/prisma', { recursive: true, force: true })\" && tsc -p tsconfig.seed.json",
     "build:lib": "node -e \"require('node:fs').rmSync('packages/yaml-loader/lib', { recursive: true, force: true })\" && tsc -p packages/yaml-loader/tsconfig.json",
     "prisma:generate": "prisma generate && node prisma/scripts/post-generate.mts",

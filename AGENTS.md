@@ -90,13 +90,18 @@ Angular-клиент ручной проверки. Проверка с нуля
 | `npm run knip` | неиспользуемые файлы, экспорты и зависимости |
 | `npm test` | юнит-тесты, паритет артефактов, снимок SDL |
 | `npm run test:e2e` | e2e на живой PostgreSQL, нужен Docker |
-| `npm run build` | библиотека → генерация → проверка контракта → `nest build` → сидинг |
+| `npm run build` | библиотека → проверка контракта → генерация → `nest build` → сидинг |
 | `npm run prisma:generate` | артефакты генерации и пост-обработка |
 | `npm run validate:api-fields` | контракт против схемы БД |
 | `npm run schema:update` | перезаписать `src/schema.gql` |
 | `npm run prisma:migrate:dev` | создать и применить миграцию локально |
 | `npm run build:seed && npm run prisma:seed` | собрать и прогнать сидинг |
 | `npm run docker:up` | `docker compose up --build` |
+
+В `npm run build` проверка контракта стоит раньше генерации намеренно: `config/api-fields.yml`
+читают сами генераторы (`prisma/generators/graphql/contract.reader.mts`,
+`prisma/generators/nestgraphql/api-fields.reader.mts`), поэтому ошибка в контракте должна быть
+поймана `validate:api-fields` до того, как они начнут перезаписывать `src/generated/**`.
 
 ## Правила изменений
 
