@@ -1,0 +1,165 @@
+# src/generated/config/profile-data.schema.yml — JSON Schema импорта data/profile.yml.
+#
+# Файл собран генератором prisma/generators/seed-schema/seed-schema.generator.mts из prisma/schema.prisma и
+# prisma/generators/seed-schema/seed-schema.config.mts: структура (модели, вложенность, обязательность, типы,
+# enum-значения, массивы) выведена из DMMF, доменные ограничения (форматы дат, шаблоны URL,
+# необязательная дата окончания) взяты из конфига генератора. Руками не редактируется: правка
+# теряется при `prisma generate` и ловится тестом паритета
+# tests/unit/generated/artifacts.parity.spec.ts.
+#
+# Читает файл валидатор сидинга (AJV, prisma/seed/data/data.validator.ts): он проверяет data/profile.yml.
+
+$schema: http://json-schema.org/draft-07/schema#
+$id: https://it-smi.local/schema/profile-data.schema.yml
+title: ProfileData
+description: 'Format of data/profile.yml: the only source of the business-card content. The schema mirrors the Prisma models without service fields (id, profileId, createdAt, updatedAt) and is the single source of truth for the loader: validation (AJV) and the structure the writer walks are derived from it.'
+type: object
+additionalProperties: false
+required:
+  - version
+  - profile
+properties:
+  version:
+    const: 1
+    description: Format version. A different value is a hard error, not a silent parse.
+  profile:
+    $ref: '#/$defs/profile'
+$defs:
+  httpUrl:
+    description: Absolute http(s) URL with a scheme and a host. Relative links, bare domains and any other value are rejected with the path of the offending field.
+    type: string
+    format: uri
+    pattern: ^https?://
+  profile:
+    type: object
+    description: Владелец визитки
+    additionalProperties: false
+    required:
+      - slug
+      - name
+      - description
+      - links
+      - skills
+      - experience
+      - projects
+    properties:
+      slug:
+        type: string
+        pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+        description: Идентификатор визитки латиницей в kebab-case.
+      name:
+        type: string
+        minLength: 1
+      description:
+        type: string
+        minLength: 1
+      links:
+        type: array
+        items:
+          $ref: '#/$defs/socialLink'
+      skills:
+        type: array
+        items:
+          $ref: '#/$defs/skill'
+      experience:
+        type: array
+        items:
+          $ref: '#/$defs/experience'
+      projects:
+        type: array
+        items:
+          $ref: '#/$defs/project'
+  socialLink:
+    type: object
+    description: Внешняя ссылка — строка справочника, общая для профилей, которые её указывают
+    additionalProperties: false
+    required:
+      - label
+      - url
+      - kind
+    properties:
+      label:
+        type: string
+        minLength: 1
+      url:
+        $ref: '#/$defs/httpUrl'
+      kind:
+        enum:
+          - GITHUB
+          - LINKEDIN
+          - WEBSITE
+          - OTHER
+        description: Тип ссылки — одно из значений `SocialKind`.
+  skill:
+    type: object
+    description: Skill of the business card. The name identifies the dictionary row and is unique in the database, so one profile lists the same skill once.
+    additionalProperties: false
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        minLength: 1
+      category:
+        type:
+          - string
+          - 'null'
+        description: 'Свободная группировка: «language», «backend», «database», …'
+  experience:
+    type: object
+    description: Место работы владельца визитки
+    additionalProperties: false
+    required:
+      - company
+      - position
+      - startedAt
+      - achievements
+    properties:
+      company:
+        type: string
+        minLength: 1
+      position:
+        type: string
+        minLength: 1
+      startedAt:
+        type: string
+        format: date
+        description: Календарная дата в формате `YYYY-MM-DD`. У периода работы нет ни времени суток, ни часового пояса.
+      endedAt:
+        anyOf:
+          - type: string
+            format: date
+            formatMinimum:
+              $data: 1/startedAt
+          - type: 'null'
+        description: |-
+          Календарная дата в формате `YYYY-MM-DD`, или `null`, пока работа является текущей. Пару
+          `finished`/`endedAt` проверяет сидинг при записи строки; чтение ничего не проверяет и возвращает строку как есть.
+      finished:
+        type: boolean
+        description: |-
+          Признак завершённого места работы. `false` — работаю по сей день, и тогда `endedAt` пуст; у владельца
+          может быть несколько мест работы одновременно, поэтому это факт о строке, а не о недостающей дате.
+          `NOT NULL DEFAULT false`, поэтому строки, записанные до появления признака, читаются как `false`.
+      achievements:
+        type: array
+        items:
+          type: string
+  project:
+    type: object
+    description: Проект владельца визитки
+    additionalProperties: false
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        minLength: 1
+      url:
+        anyOf:
+          - type: 'null'
+          - $ref: '#/$defs/httpUrl'
+      description:
+        type:
+          - string
+          - 'null'

@@ -26,7 +26,7 @@ import type { IDictionarySpec, IOverrides, TSchemaFragment } from './types.mts';
  * the serializer, so the committed file ends with one.
  *
  * @param datamodel `options.dmmf.datamodel`
- * @returns the content of `config/profile-data.schema.yml`
+ * @returns the content of `src/generated/config/profile-data.schema.yml`
  */
 export function render(datamodel: DMMF.Datamodel): string {
   assertConfig();

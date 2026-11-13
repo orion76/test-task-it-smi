@@ -28,7 +28,9 @@ export function assertConfig(): void {
   }
 
   if (typeof config.output !== 'string' || config.output.length === 0) {
-    failConfig('output: expected the path of the artifact, e.g. "config/profile-data.schema.yml"');
+    failConfig(
+      'output: expected the path of the artifact, e.g. "src/generated/config/profile-data.schema.yml"',
+    );
   }
 
   assertMapping('root', config.root);

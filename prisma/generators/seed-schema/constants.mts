@@ -6,7 +6,7 @@
 import config from './seed-schema.config.mts';
 
 /** Fallback when the schema declares no `output`: mirrors the value declared in `schema.prisma`. */
-export const DEFAULT_OUTPUT = '../config';
+export const DEFAULT_OUTPUT = '../src/generated/config';
 
 /** Header of the artifact: it explains where the content comes from and how to change it. */
 export const HEADER = [
@@ -49,7 +49,7 @@ export const DICTIONARIES_FILE_NAME = 'dictionaries.yml';
 
 /** Header of the dictionaries artifact: where the block comes from and who reads it. */
 export const DICTIONARIES_HEADER = [
-  `# config/${DICTIONARIES_FILE_NAME} — справочники и их таблицы связи.`,
+  `# src/generated/config/${DICTIONARIES_FILE_NAME} — справочники и их таблицы связи.`,
   '#',
   '# Файл собран генератором prisma/generators/seed-schema/seed-schema.generator.mts из prisma/schema.prisma и',
   '# prisma/generators/seed-schema/seed-schema.config.mts: блок `dictionaries` конфига перечисляет справочные',

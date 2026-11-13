@@ -25,11 +25,11 @@ generator nestgraphql {
 // the API. Prisma passes the DMMF to the generator over its own protocol, so the datamodel stays
 // the single source of truth and the application never reads `Prisma.dmmf` at runtime.
 // The provider is a local Node script rather than a published package: `provider` is spawned as a
-// shell command from the project root. The artifact is committed into `config/`, where the build
-// step and the running application read it at the same relative path.
+// shell command from the project root. The artifact is committed into `src/generated/config/`,
+// where the build step and the running application read it at the same relative path.
 generator apiFields {
   provider = "node ./prisma/generators/api-fields/api-fields.generator.mts"
-  output   = "../config"
+  output   = "../src/generated/config"
 }
 
 // GraphQL declarations of the API (`src/generated/graphql/resolvers/*.resolver.ts`): the nested
@@ -41,16 +41,16 @@ generator graphql {
   output   = "../src/generated/graphql/resolvers"
 }
 
-// JSON Schema of the seed data (`config/profile-data.schema.yml`): the import file has to describe
-// the rows these models declare, so the structure is generated from the DMMF. Only what Prisma
-// cannot express (`format: date`, URL patterns, the `version` envelope) comes from
+// JSON Schema of the seed data (`src/generated/config/profile-data.schema.yml`): the import file has
+// to describe the rows these models declare, so the structure is generated from the DMMF. Only what
+// Prisma cannot express (`format: date`, URL patterns, the `version` envelope) comes from
 // `prisma/generators/seed-schema/seed-schema.config.mts`; no annotation DSL is added to this file.
 // The artifact is committed: the seed reads it at startup, in the image as well. A divergence is
 // caught by `tests/unit/generated/artifacts.parity.spec.ts`, which regenerates the file in a
 // disposable copy of the project and compares it byte for byte with the committed one.
 generator seedSchema {
   provider = "node ./prisma/generators/seed-schema/seed-schema.generator.mts"
-  output   = "../config"
+  output   = "../src/generated/config"
 }
 
 datasource db {

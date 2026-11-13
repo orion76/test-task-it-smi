@@ -1,0 +1,25 @@
+# src/generated/config/dictionaries.yml — справочники и их таблицы связи.
+#
+# Файл собран генератором prisma/generators/seed-schema/seed-schema.generator.mts из prisma/schema.prisma и
+# prisma/generators/seed-schema/seed-schema.config.mts: блок `dictionaries` конфига перечисляет справочные
+# модели, их ключ и таблицу связи, а генератор проверяет каждое имя по DMMF. Руками не редактируется:
+# правка теряется при `prisma generate` и ловится тестом паритета
+# tests/unit/generated/artifacts.parity.spec.ts.
+#
+# Читает файл сидинг (prisma/seed/dictionaries/dictionaries.reader.ts): строку справочника он вставляет
+# один раз на значение ключа, строку связи — по полученному id.
+
+version: 1
+dictionaries:
+  Skill:
+    key: name
+    link:
+      model: ProfileSkill
+      parent: profileId
+      target: skillId
+  SocialLink:
+    key: url
+    link:
+      model: ProfileSocialLink
+      parent: profileId
+      target: socialLinkId

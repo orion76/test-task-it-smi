@@ -68,14 +68,18 @@ COPY --from=build --chown=node:node /app/prisma ./prisma
 # Клиент генерируется в runtime-стадии: `npm ci --omit=dev` ставит чистый `@prisma/client`,
 # а `binaryTargets` в схеме включает linux-musl — движок соответствует alpine.
 # Генераторы `nestgraphql` и `apiFields` здесь не нужны и не запускаются: GraphQL-типы
-# сгенерированы на стадии сборки и лежат в `dist`, а схема контракта API — в `config/`, который
-# копируется отдельным `COPY` ниже. Поэтому выбирается только `client`.
+# сгенерированы на стадии сборки и лежат в `dist`, а схема контракта API — артефакт каталога
+# `src/generated/config/`, который копируется отдельным `COPY` ниже. Поэтому выбирается
+# только `client`.
 RUN npx prisma generate --generator client
 
-# Артефакты сборки, конфигурация и контент визитки принадлежат пользователю `node`.
-# Каталог `config/` (YAML-конфиги) копируется отдельно: приложение и сидинг читают его
-# относительно рабочего каталога `/app`, а не из `dist`.
+# Артефакты сборки, конфигурация и контент визитки принадлежат пользователю `node`. Каталог
+# `config/` (YAML-конфиги, которые правит пользователь) копируется отдельно: приложение и сидинг
+# читают его относительно рабочего каталога `/app`, а не из `dist`.
 COPY --from=build --chown=node:node /app/dist ./dist
+# Схемы контракта и контента со справочниками выпускает `prisma generate` в `src/generated/config/`,
+# поэтому в `config/` их нет и вместе с ним они не приезжают: каталог генерации копируется сам.
+COPY --from=build --chown=node:node /app/src/generated/config ./src/generated/config
 # Статика клиента лежит рядом с `dist` и отдаётся тем же процессом Nest
 # (`useStaticAssets(join(__dirname, '..', 'public'))`): отдельного веб-сервера в образе нет.
 COPY --from=client-build --chown=node:node /app/dist/browser ./public

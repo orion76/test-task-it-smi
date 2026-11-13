@@ -12,7 +12,7 @@ import { join } from 'node:path';
 
 import { projectRoot } from 'yaml-loader';
 
-/** Root of the project: the seed reads `data/` and `config/` relative to it. */
+/** Root of the project: the seed reads `data/` and `src/generated/config/` relative to it. */
 const PROJECT_ROOT = projectRoot(import.meta.dirname);
 const ENV_FILE = join(PROJECT_ROOT, '.env');
 const SEED_ENTRY = 'prisma/seed/main.ts';

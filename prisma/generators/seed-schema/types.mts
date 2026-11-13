@@ -41,7 +41,7 @@ export interface IDictionarySpec extends IDictionaryConfig {
   parent: string;
 }
 
-/** One entry of the `config/dictionaries.yml` artifact: the part the seed reads. */
+/** One entry of the `src/generated/config/dictionaries.yml` artifact: the part the seed reads. */
 export interface IDictionaryEntry {
   key: string;
   link: IDictionaryLink;

@@ -1,7 +1,7 @@
 /**
- * Prisma generator that writes the JSON Schema of the API contract (`config/api-fields.schema.yml`)
- * from the DMMF, so the list of model and field names the config may mention follows
- * `schema.prisma`.
+ * Prisma generator that writes the JSON Schema of the API contract
+ * (`src/generated/config/api-fields.schema.yml`) from the DMMF, so the list of model and field names
+ * the config may mention follows `schema.prisma`.
  *
  * The artifact describes the config, not the rows: `additionalProperties: false` on each level
  * turns a typo into a build error instead of a field that silently disappears from the API.

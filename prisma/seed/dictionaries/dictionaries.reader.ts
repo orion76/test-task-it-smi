@@ -7,9 +7,9 @@ import { SeedError } from '../shared/seed.error';
 import type { IDictionarySpec } from './types';
 
 /**
- * Reads `config/dictionaries.yml`: the dictionaries of the import file, written by the `seedSchema`
- * generator from the datamodel. The shape is checked here, because the writer addresses a tie table
- * by these names and a broken artifact would write into a table the client does not have.
+ * Reads `src/generated/config/dictionaries.yml`: the dictionaries of the import file, written by the
+ * `seedSchema` generator from the datamodel. The shape is checked here, because the writer addresses
+ * a tie table by these names and a broken artifact would write into a table the client does not have.
  *
  * @param filePath path of the artifact, relative to the project root
  * @returns the dictionaries in the order of the artifact

@@ -1,8 +1,9 @@
 /**
  * Prisma generator that writes the inputs of the seed from the DMMF, so `schema.prisma` stays the
  * single source of truth about the shape of the domain: the JSON Schema of `data/profile.yml`
- * (`config/profile-data.schema.yml`) and the dictionaries with their tie tables
- * (`config/dictionaries.yml`). Everything Prisma cannot express comes from `seed-schema.config.mts`:
+ * (`src/generated/config/profile-data.schema.yml`) and the dictionaries with their tie tables
+ * (`src/generated/config/dictionaries.yml`). Everything Prisma cannot express comes from
+ * `seed-schema.config.mts`:
  * the root envelope, the service columns kept out of the import file, the shared fragments, the domain
  * rules and the dictionaries.
  */

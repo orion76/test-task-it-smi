@@ -22,16 +22,15 @@ Angular-клиент ручной проверки. Проверка с нуля
 | `src/db/` | `EntityRepository`, построение аргументов чтения, Prisma-клиент | да |
 | `src/graphql/` | поведение запросов (404, пагинация), `EntityLoader`, регистрация резолверов | да |
 | `src/features/health/` | HTTP `/health` и GraphQL-поле `health` | да |
-| `src/generated/**` | артефакт `npm run prisma:generate`: классы GraphQL-типов и объявления резолверов | **нет** — перегенерировать |
+| `src/generated/**` | артефакты `npm run prisma:generate`: классы GraphQL-типов, объявления резолверов и YAML-схемы под `src/generated/config/` | **нет** — перегенерировать |
 | `src/schema.gql` | снимок SDL; единственный писатель — тест (`npm run schema:update`) | **нет** |
 | `prisma/schema.prisma` | источник структуры данных: модели, колонки, индексы, связи | да, затем миграция и генерация |
 | `prisma/migrations/` | закоммиченный SQL; `init` не переписывается, новая миграция — `npm run prisma:migrate:dev` | только через CLI |
 | `prisma/generators/` | генераторы и их конфиги, в т.ч. объявление справочников в `seed-schema/seed-schema.config.mts` | да |
 | `prisma/seed/` | движок сидинга: дерево моделей, писатель, справочники, доменные проверки | да |
 | `prisma/scripts/` | пост-обработка после генерации и установки | да |
-| `config/api-fields.yml` | контракт API: запросы, поля, связи, порядок | да |
-| `config/environment.schema.yml` | JSON Schema переменных окружения | да |
-| `config/api-fields.schema.yml`, `config/profile-data.schema.yml`, `config/dictionaries.yml` | артефакты генерации | **нет** — перегенерировать |
+| `config/` | только то, что правит пользователь: `api-fields.yml` (контракт API: запросы, поля, связи, порядок), `environment.schema.yml` (JSON Schema окружения) | да |
+| `src/generated/config/` | артефакты генерации: `api-fields.schema.yml`, `profile-data.schema.yml`, `dictionaries.yml` | **нет** — перегенерировать |
 | `data/profile.yml` | контент визитки; сидинг только читает его | да |
 | `tests/unit/`, `tests/e2e/` | юнит-тесты и e2e на живой PostgreSQL | да |
 | `packages/yaml-loader/` | своя библиотека чтения и проверки YAML (`file:`-зависимость) | да |
@@ -67,8 +66,13 @@ Angular-клиент ручной проверки. Проверка с нуля
   запуск не даёт дублей. → Признак: `update`, `upsert` или `updateMany` в `prisma/seed/**`.
 - **Справочники двухфазные:** `Skill` (ключ `name`) и `SocialLink` (ключ `url`) — общие строки, а
   принадлежность профилю хранят `ProfileSkill` и `ProfileSocialLink`; объявление — блок `dictionaries`
-  в `seed-schema.config.mts`, артефакт — `config/dictionaries.yml`. → Признак: `profileId` у `Skill`
-  или `SocialLink`, `@@unique([profileId, name])`.
+  в `seed-schema.config.mts`, артефакт — `src/generated/config/dictionaries.yml`. → Признак:
+  `profileId` у `Skill` или `SocialLink`, `@@unique([profileId, name])`.
+- **Артефакты `prisma generate` лежат под `src/generated/`,** в `config/` — только конфиги, которые
+  правит пользователь (`api-fields.yml`, `environment.schema.yml`). YAML-схемы контракта и контента
+  со справочниками — тоже артефакты, поэтому они живут в `src/generated/config/`. → Признак: файл,
+  который пишет генератор, лежит в `config/`; либо правимый руками конфиг появился под
+  `src/generated/`.
 - **Артефакты лежат в git, актуальность держит тест паритета.** → Признак: расхождение `npm test` на
   `tests/unit/generated/artifacts.parity.spec.ts`.
 - **Границы слоёв:** `db` и `graphql` не импортируют друг друга, связь — через `IEntityQueryPort` и
@@ -98,8 +102,10 @@ Angular-клиент ручной проверки. Проверка с нуля
 
 - Русский — документация, `.md`-комментарии, коммиты; английский — код: идентификаторы, JSDoc,
   комментарии в коде.
-- `config/` — только YAML. Читающий и проверяющий код лежит в `src/`, `prisma/` или `scripts/`; новый
-  конфиг добавляется в `config/`, а не в `src/`.
+- `config/` — только YAML, который правит пользователь, и только он: `api-fields.yml`,
+  `environment.schema.yml`. Читающий и проверяющий код лежит в `src/`, `prisma/` или `scripts/`;
+  новый конфиг добавляется в `config/`, а не в `src/`. Всё, что пишет `prisma generate`, живёт под
+  `src/generated/`, а не в `config/`.
 - `type: commonjs` в `package.json` не менять на `module` — ESM ломает Nest CLI и Prisma.
 - Временные файлы, логи и отладочные скрипты — только в `.tmp/` (он в `.gitignore`); каталог `tmp/`
   без точки не использовать.
@@ -112,7 +118,7 @@ Angular-клиент ручной проверки. Проверка с нуля
 ## Чего не делать без явного разрешения
 
 - Правка `README.md` и документации: пункт todo разрешением не является, спрашивайте отдельно.
-- Правка сгенерированных артефактов (`src/generated/**`, `config/*.schema.yml`,
-  `config/dictionaries.yml`, `src/schema.gql`) — их перегенерируют.
+- Правка сгенерированных артефактов (`src/generated/**`, включая `src/generated/config/*.yml`, и
+  `src/schema.gql`) — их перегенерируют.
 - Изменение `TZ/` — это требования заказчика, а не документация проекта.
 - Возврат `.doc/` в репозиторий: решением пользователя каталог остаётся в `.gitignore`.

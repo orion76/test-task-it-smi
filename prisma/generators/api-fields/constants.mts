@@ -10,7 +10,7 @@ import type { IObjectSchema, TSchemaNode } from './types.mts';
 export const SCHEMA_FILE_NAME = 'api-fields.schema.yml';
 
 /** Fallback when the schema declares no `output`: mirrors the value declared in `schema.prisma`. */
-export const DEFAULT_OUTPUT = '../config';
+export const DEFAULT_OUTPUT = '../src/generated/config';
 
 /**
  * Columns of a model that belong to every row: the key, the discriminant and the timestamps. A tie
@@ -20,7 +20,7 @@ export const SERVICE_COLUMNS: ReadonlySet<string> = new Set(['id', 'type', 'crea
 
 /** Header of the artifact: it explains where the content comes from and how to change it. */
 export const HEADER = [
-  `# config/${SCHEMA_FILE_NAME} — JSON Schema контракта API (config/api-fields.yml).`,
+  `# src/generated/config/${SCHEMA_FILE_NAME} — JSON Schema контракта API (config/api-fields.yml).`,
   '#',
   '# Файл собран генератором prisma/generators/api-fields/api-fields.generator.mts из DMMF',
   '# prisma/schema.prisma: модели, их скалярные поля, связи и порядок чтения перечислены явно,',

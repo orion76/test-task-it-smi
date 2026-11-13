@@ -1,0 +1,472 @@
+# src/generated/config/api-fields.schema.yml — JSON Schema контракта API (config/api-fields.yml).
+#
+# Файл собран генератором prisma/generators/api-fields/api-fields.generator.mts из DMMF
+# prisma/schema.prisma: модели, их скалярные поля, связи и порядок чтения перечислены явно,
+# поэтому имя модели, колонки или сущности, которых нет в схеме, — ошибка валидации, а не
+# молча пропавшее поле API. Руками не редактируется: правка теряется при `prisma generate`
+# и ловится тестом паритета tests/unit/generated/artifacts.parity.spec.ts.
+#
+# Читает файл валидатор контракта (AJV, src/graphql/contract/api-fields.validator.ts):
+# он проверяет config/api-fields.yml на сборке и на старте приложения.
+
+$schema: http://json-schema.org/draft-07/schema#
+type: object
+additionalProperties: false
+required:
+  - version
+  - models
+properties:
+  version:
+    const: 1
+  models:
+    type: object
+    additionalProperties: false
+    properties:
+      Experience:
+        type: object
+        additionalProperties: false
+        required:
+          - description
+        properties:
+          description:
+            type: string
+            minLength: 1
+          properties:
+            type: object
+            additionalProperties: false
+            properties:
+              achievements:
+                $ref: '#/$defs/property'
+              company:
+                $ref: '#/$defs/property'
+              endedAt:
+                $ref: '#/$defs/property'
+              finished:
+                $ref: '#/$defs/property'
+              id:
+                $ref: '#/$defs/property'
+              position:
+                $ref: '#/$defs/property'
+              profileId:
+                $ref: '#/$defs/property'
+              startedAt:
+                $ref: '#/$defs/property'
+              type:
+                $ref: '#/$defs/property'
+          references:
+            type: object
+            additionalProperties: false
+            properties:
+              profile:
+                type: object
+                additionalProperties: false
+                required:
+                  - description
+                  - entity
+                  - property
+                properties:
+                  description:
+                    type: string
+                    minLength: 1
+                  entity:
+                    const: profile
+                  property:
+                    const: profileId
+          order:
+            type: array
+            items:
+              type: object
+              minProperties: 1
+              maxProperties: 1
+              propertyNames:
+                enum:
+                  - achievements
+                  - company
+                  - endedAt
+                  - finished
+                  - id
+                  - position
+                  - profileId
+                  - startedAt
+                  - type
+              additionalProperties:
+                $ref: '#/$defs/sort'
+      Profile:
+        type: object
+        additionalProperties: false
+        required:
+          - description
+        properties:
+          description:
+            type: string
+            minLength: 1
+          properties:
+            type: object
+            additionalProperties: false
+            properties:
+              createdAt:
+                $ref: '#/$defs/property'
+              description:
+                $ref: '#/$defs/property'
+              id:
+                $ref: '#/$defs/property'
+              name:
+                $ref: '#/$defs/property'
+              slug:
+                $ref: '#/$defs/property'
+              type:
+                $ref: '#/$defs/property'
+              updatedAt:
+                $ref: '#/$defs/property'
+          references:
+            type: object
+            additionalProperties:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - description
+                    - entity
+                    - through
+                  properties:
+                    description:
+                      type: string
+                      minLength: 1
+                    entity:
+                      const: skill
+                    through:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - entity
+                        - parent
+                        - target
+                      properties:
+                        entity:
+                          const: profileSkill
+                        parent:
+                          const: profileId
+                        target:
+                          const: skillId
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - description
+                    - entity
+                    - through
+                  properties:
+                    description:
+                      type: string
+                      minLength: 1
+                    entity:
+                      const: socialLink
+                    through:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - entity
+                        - parent
+                        - target
+                      properties:
+                        entity:
+                          const: profileSocialLink
+                        parent:
+                          const: profileId
+                        target:
+                          const: socialLinkId
+            properties:
+              experience:
+                type: object
+                additionalProperties: false
+                required:
+                  - description
+                  - entity
+                  - property
+                properties:
+                  description:
+                    type: string
+                    minLength: 1
+                  entity:
+                    const: experience
+                  property:
+                    const: profileId
+              projects:
+                type: object
+                additionalProperties: false
+                required:
+                  - description
+                  - entity
+                  - property
+                properties:
+                  description:
+                    type: string
+                    minLength: 1
+                  entity:
+                    const: project
+                  property:
+                    const: profileId
+          order:
+            type: array
+            items:
+              type: object
+              minProperties: 1
+              maxProperties: 1
+              propertyNames:
+                enum:
+                  - createdAt
+                  - description
+                  - id
+                  - name
+                  - slug
+                  - type
+                  - updatedAt
+              additionalProperties:
+                $ref: '#/$defs/sort'
+      Project:
+        type: object
+        additionalProperties: false
+        required:
+          - description
+        properties:
+          description:
+            type: string
+            minLength: 1
+          properties:
+            type: object
+            additionalProperties: false
+            properties:
+              description:
+                $ref: '#/$defs/property'
+              id:
+                $ref: '#/$defs/property'
+              name:
+                $ref: '#/$defs/property'
+              profileId:
+                $ref: '#/$defs/property'
+              type:
+                $ref: '#/$defs/property'
+              url:
+                $ref: '#/$defs/property'
+          references:
+            type: object
+            additionalProperties: false
+            properties:
+              profile:
+                type: object
+                additionalProperties: false
+                required:
+                  - description
+                  - entity
+                  - property
+                properties:
+                  description:
+                    type: string
+                    minLength: 1
+                  entity:
+                    const: profile
+                  property:
+                    const: profileId
+          order:
+            type: array
+            items:
+              type: object
+              minProperties: 1
+              maxProperties: 1
+              propertyNames:
+                enum:
+                  - description
+                  - id
+                  - name
+                  - profileId
+                  - type
+                  - url
+              additionalProperties:
+                $ref: '#/$defs/sort'
+      Skill:
+        type: object
+        additionalProperties: false
+        required:
+          - description
+        properties:
+          description:
+            type: string
+            minLength: 1
+          properties:
+            type: object
+            additionalProperties: false
+            properties:
+              category:
+                $ref: '#/$defs/property'
+              id:
+                $ref: '#/$defs/property'
+              name:
+                $ref: '#/$defs/property'
+              type:
+                $ref: '#/$defs/property'
+          references:
+            type: object
+            additionalProperties:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - description
+                    - entity
+                    - through
+                  properties:
+                    description:
+                      type: string
+                      minLength: 1
+                    entity:
+                      const: profile
+                    through:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - entity
+                        - parent
+                        - target
+                      properties:
+                        entity:
+                          const: profileSkill
+                        parent:
+                          const: skillId
+                        target:
+                          const: profileId
+            properties: {}
+          order:
+            type: array
+            items:
+              type: object
+              minProperties: 1
+              maxProperties: 1
+              propertyNames:
+                enum:
+                  - category
+                  - id
+                  - name
+                  - type
+              additionalProperties:
+                $ref: '#/$defs/sort'
+      SocialLink:
+        type: object
+        additionalProperties: false
+        required:
+          - description
+        properties:
+          description:
+            type: string
+            minLength: 1
+          properties:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                $ref: '#/$defs/property'
+              kind:
+                $ref: '#/$defs/property'
+              label:
+                $ref: '#/$defs/property'
+              type:
+                $ref: '#/$defs/property'
+              url:
+                $ref: '#/$defs/property'
+          references:
+            type: object
+            additionalProperties:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required:
+                    - description
+                    - entity
+                    - through
+                  properties:
+                    description:
+                      type: string
+                      minLength: 1
+                    entity:
+                      const: profile
+                    through:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - entity
+                        - parent
+                        - target
+                      properties:
+                        entity:
+                          const: profileSocialLink
+                        parent:
+                          const: socialLinkId
+                        target:
+                          const: profileId
+            properties: {}
+          order:
+            type: array
+            items:
+              type: object
+              minProperties: 1
+              maxProperties: 1
+              propertyNames:
+                enum:
+                  - id
+                  - kind
+                  - label
+                  - type
+                  - url
+              additionalProperties:
+                $ref: '#/$defs/sort'
+  queries:
+    type: object
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required:
+        - description
+        - entity
+        - kind
+      properties:
+        description:
+          type: string
+          minLength: 1
+        kind:
+          enum:
+            - one
+            - page
+        entity:
+          enum:
+            - experience
+            - profile
+            - project
+            - skill
+            - socialLink
+$defs:
+  property:
+    type: object
+    additionalProperties: false
+    required:
+      - description
+    properties:
+      description:
+        type: string
+        minLength: 1
+  sort:
+    oneOf:
+      - enum:
+          - asc
+          - desc
+      - type: object
+        additionalProperties: false
+        required:
+          - sort
+          - nulls
+        properties:
+          sort:
+            enum:
+              - asc
+              - desc
+          nulls:
+            enum:
+              - first
+              - last

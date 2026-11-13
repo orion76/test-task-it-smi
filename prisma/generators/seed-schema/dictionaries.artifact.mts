@@ -1,7 +1,7 @@
 /**
- * Renders `config/dictionaries.yml`: the `dictionaries` block of the config resolved against the
- * datamodel, in the shape the seed reads. The artifact is committed, like the schema of the import
- * file, so the seed never parses the generator config.
+ * Renders `src/generated/config/dictionaries.yml`: the `dictionaries` block of the config resolved
+ * against the datamodel, in the shape the seed reads. The artifact is committed, like the schema of
+ * the import file, so the seed never parses the generator config.
  */
 import { stringify } from 'yaml';
 
@@ -12,7 +12,7 @@ import type { IDictionaryEntry, IDictionarySpec } from './types.mts';
  * Renders the artifact: the header and the dictionaries keyed by model name.
  *
  * @param specs dictionaries of the config, resolved against the datamodel
- * @returns the content of `config/dictionaries.yml`
+ * @returns the content of `src/generated/config/dictionaries.yml`
  */
 export function renderDictionaries(specs: readonly IDictionarySpec[]): string {
   const dictionaries: Record<string, IDictionaryEntry> = {};

@@ -31,7 +31,7 @@
 #   - `entity` пишется так же, как делегат Prisma-клиента: `profile`, `socialLink`, `skill`,
 #     `experience`, `project`. Это то же имя, что приходит в колонке `type`;
 #   - смысл `null` описывается текстом: отдельного признака nullable в конфиге нет;
-#   - файл валидируется схемой config/api-fields.schema.yml, которую выпускает генератор
+#   - файл валидируется схемой src/generated/config/api-fields.schema.yml, которую выпускает генератор
 #     prisma/generators/api-fields/api-fields.generator.mts из DMMF. Опечатка в имени модели или
 #     поля, неверный `entity`, не та колонка в `property`, неизвестная таблица в запросе или
 #     колонка в `order` — ошибка сборки (см. `npm run validate:api-fields`).
