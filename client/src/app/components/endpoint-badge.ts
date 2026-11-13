@@ -1,7 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-import type { IEndpointBadge } from './types';
-
 /**
  * Shows where the requests of the page actually go. The address is the origin of the page plus
  * `/graphql`: the dev server proxies it to the backend, so the browser never sends a cross-origin
@@ -19,6 +17,6 @@ import type { IEndpointBadge } from './types';
     </p>
   `,
 })
-export class EndpointBadge implements IEndpointBadge {
+export class EndpointBadge {
   readonly endpoint = `${window.location.origin}/graphql`;
 }

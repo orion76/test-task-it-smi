@@ -1,9 +1,34 @@
 <section class="panel">
   <h2 class="panel__title">
     <span>API</span>
-
   </h2>
-  <div class="json-wrapper">
-    <ngx-json-viewer [json]="apiResponse()" [expanded]="false"></ngx-json-viewer>
-  </div>
+
+  @if (result(); as result) {
+    @if (result.networkError; as networkError) {
+      <div class="network-error">
+        <h3>Ошибка сети</h3>
+        <pre>{{ networkError }}</pre>
+      </div>
+    }
+
+    @if (result.errors.length > 0) {
+      <div class="graphql-errors">
+        <h3>Ошибки GraphQL</h3>
+        <ul>
+          @for (error of result.errors; track $index) {
+            <li>
+              <span>{{ error.message }}</span>
+              @if (error.path !== '') {
+                <code class="path">{{ error.path }}</code>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
+    <div class="json-wrapper">
+      <ngx-json-viewer [json]="result.data" [expanded]="false"></ngx-json-viewer>
+    </div>
+  }
 </section>

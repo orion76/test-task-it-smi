@@ -1,7 +1,4 @@
-import type { Signal, WritableSignal } from '@angular/core';
 import type { DocumentNode } from 'graphql';
-
-import type { IProfileDetails } from './components/types';
 
 /**
  * Operation selectable in the panel: the three presets of the contract and the free-form mode.
@@ -56,16 +53,4 @@ export interface IOperationState {
  */
 export interface IRequestInputError extends Error {
   readonly name: 'RequestInputError';
-}
-
-/**
- * What the page exposes to its template and to a test: the state of the current run and the two
- * entry points that change it. The runners behind them are implementation.
- */
-export interface IApp {
-  readonly state: WritableSignal<IOperationState>;
-  readonly busy: Signal<boolean>;
-  readonly profiles: Signal<IProfileDetails[]>;
-  run(request: IOperationRequest): void;
-  reject(message: string): void;
 }

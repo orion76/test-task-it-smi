@@ -1,11 +1,4 @@
-import type { InputSignal, OutputEmitterRef, Signal } from '@angular/core';
-
-import type {
-  IOperationRequest,
-  IOperationResult,
-  IOperationState,
-  UOperationName,
-} from '../types';
+import type { UOperationName } from '../types';
 
 /** One selectable operation of the panel: a preset of the contract or the free-form mode. */
 export interface IPreset {
@@ -74,9 +67,4 @@ export interface ISkillGroup {
 export interface IProfileCard {
   profile: IProfileDetails;
   skillGroups: ISkillGroup[];
-}
-
-/** Contract of the badge: the address it shows. The page binds nothing else to it. */
-export interface IEndpointBadge {
-  readonly endpoint: string;
 }

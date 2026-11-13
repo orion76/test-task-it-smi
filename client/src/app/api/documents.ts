@@ -1,5 +1,3 @@
-import { gql } from 'apollo-angular';
-
 /**
  * Every field of `Profile` and of its nested collections, exactly as published by the API
  * (`config/api-fields.yml`). The fragment is shared by the single-profile and the page queries, so

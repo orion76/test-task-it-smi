@@ -1,31 +1,33 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, inject, signal, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import type { OnInit } from '@angular/core';
 import { Apollo, gql } from 'apollo-angular';
 import { getIntrospectionQuery } from 'graphql';
-import { runOperation } from '../../api/operation.runner';
 import { NgxJsonViewerModule } from 'ngx-json-viewer';
 
+import { runOperation } from '../../api/operation.runner';
+import type { IOperationResult } from '../../types';
 
 const API_REQUEST = getIntrospectionQuery();
 
+/**
+ * Runs the introspection query and shows the raw answer as a JSON tree. A failure reaches the panel
+ * the same way as in the result panel: a GraphQL error and an unreachable backend are separate
+ * blocks, so neither of them is lost behind an empty answer.
+ */
 @Component({
   selector: 'app-api-panel',
   imports: [NgxJsonViewerModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: 'api-panel.html',
 })
-export class ApiPanel implements AfterViewInit {
+export class ApiPanel implements OnInit {
   private readonly apollo = inject(Apollo);
 
-  apiResponse = signal('');
-  load() {
-    runOperation(this.apollo, gql`${API_REQUEST}`, {}).then((response) => {
+  readonly result = signal<IOperationResult | null>(null);
 
-      this.apiResponse.set(response.data as string);
-    })
+  ngOnInit(): void {
+    void runOperation(this.apollo, gql`${API_REQUEST}`, {}).then((result) => {
+      this.result.set(result);
+    });
   }
-  ngAfterViewInit(): void {
-
-    this.load()
-  }
-
 }

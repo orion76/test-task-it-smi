@@ -396,16 +396,16 @@ button.tab--active {
 .json-wrapper {
   max-width: 80vw;
   max-height: 80vh;
-  /* Высота окна, после которой появится вертикальный скролл */
+  /* Window height after which the vertical scrollbar appears */
   overflow: auto;
-  /* Включает оба скролла, если контент не влезает */
+  /* Both scrollbars on when the content does not fit */
   border: 1px solid #ddd;
   padding: 12px;
   border-radius: 6px;
   box-sizing: border-box;
 }
 
-/* Разрешаем перенос длинных текстовых значений внутри дерева */
+/* Let long text values wrap inside the tree */
 :host ::ng-deep ngx-json-viewer .segment .segment-main .segment-value {
   white-space: pre-wrap !important;
   word-break: break-word !important;
