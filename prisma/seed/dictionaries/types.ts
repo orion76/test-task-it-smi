@@ -18,7 +18,7 @@ export interface IDictionarySpec {
 }
 
 /** One entry of the dictionaries artifact: the key column of a dictionary and its tie table. */
-export interface IDictionaryEntry {
+interface IDictionaryEntry {
   key: string;
   link: IDictionaryLink;
 }
