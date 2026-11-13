@@ -4,7 +4,7 @@
  * unexpected shape yields an empty value and the JSON block of the result panel shows the answer
  * anyway.
  */
-import { asJsonArray, asJsonRecords, asOptionalText, asText, isJsonRecord } from '../json.guard';
+import { asJsonArray, asJsonRecords, asOptionalText, asText, isJsonRecord } from '../../json.guard';
 import type {
   IProfileDetails,
   IProfileExperience,
@@ -12,7 +12,7 @@ import type {
   IProfileProject,
   IProfileSkill,
   ISkillGroup,
-} from './types';
+} from '../types';
 
 /**
  * Pulls readable profiles out of the response: `profile` of the single-profile preset, `profiles`

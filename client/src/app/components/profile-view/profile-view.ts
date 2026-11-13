@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { formatDate, groupSkills } from '../profile.mapper';
+import { formatDate, groupSkills } from './profile.mapper';
 import type { IProfileCard, IProfileDetails, IProfileExperience, IProfileView } from '../types';
 
 /**

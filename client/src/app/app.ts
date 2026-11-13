@@ -3,7 +3,7 @@ import { Apollo } from 'apollo-angular';
 import { runOperation } from './api/operation.runner';
 import { EndpointBadge } from './components/endpoint-badge';
 import { OperationPanel } from './components/operation-panel/operation-panel';
-import { extractProfiles } from './components/profile.mapper';
+import { extractProfiles } from './components/profile-view/profile.mapper';
 import { ProfileView } from './components/profile-view/profile-view';
 import { ResultPanel } from './components/result-panel/result-panel';
 import { INITIAL_STATE } from './constants';
@@ -25,10 +25,15 @@ import type { IApp, IOperationRequest, IOperationState } from './types';
         <h1>Ручная проверка GraphQL API</h1>
         <app-endpoint-badge />
       </header>
-
-      <app-operation-panel [busy]="busy()" (run)="run($event)" (reject)="reject($event)" />
-      <app-result-panel [state]="state()" />
-      <app-profile-view [profiles]="profiles()" />
+      <div class="page__body">
+        <section class="content">
+          <app-result-panel [state]="state()" />
+        <app-profile-view [profiles]="profiles()" />
+        </section>
+        <section class="side-right">
+          <app-operation-panel [busy]="busy()" (run)="run($event)" (reject)="reject($event)" />
+        </section>
+      </div>
     </main>
   `,
 })
