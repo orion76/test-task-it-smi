@@ -34,8 +34,8 @@ export default [
       // Artifacts of `prisma generate`: rewritten by the generators, so their style is the
       // generators' business, not the project's.
       'src/generated/**',
-      // Artifacts of `npm run build:lib`: emitted by `tsc`, so their formatting and quoting are the
-      // compiler's business, not the project's.
+      // Artifacts of `npm run build:lib`: emitted by `tsc` and kept in the repository as an artifact,
+      // so their formatting and quoting are the compiler's business, not the project's.
       'packages/yaml-loader/lib/**',
       // The client is a standalone package with its own `client/eslint.config.mjs` and its own
       // `npm run lint`: the browser globals and the Angular component and template rules live

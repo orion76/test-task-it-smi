@@ -9,10 +9,11 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+
+import { projectRoot } from 'yaml-loader';
 
 /** Root of the project: the seed reads `data/` and `config/` relative to it. */
-const PROJECT_ROOT = fileURLToPath(new URL('..', import.meta.url));
+const PROJECT_ROOT = projectRoot(import.meta.dirname);
 const ENV_FILE = join(PROJECT_ROOT, '.env');
 const SEED_ENTRY = 'prisma/seed/main.ts';
 const TS_NODE_PROJECT = 'tsconfig.seed.json';

@@ -18,7 +18,7 @@
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest -c jest-e2e.config.mjs",
     "build": "npm run build:lib && npm run prisma:generate && npm run validate:api-fields && nest build && npm run build:seed",
     "build:seed": "node -e \"require('node:fs').rmSync('dist/prisma', { recursive: true, force: true })\" && tsc -p tsconfig.seed.json",
-    "build:lib": "tsc -p packages/yaml-loader/tsconfig.json",
+    "build:lib": "node -e \"require('node:fs').rmSync('packages/yaml-loader/lib', { recursive: true, force: true })\" && tsc -p packages/yaml-loader/tsconfig.json",
     "prisma:generate": "prisma generate && node prisma/scripts/post-generate.mts",
     "validate:api-fields": "ts-node -T --project tsconfig.scripts.json scripts/api-fields.cli.ts",
     "postinstall": "node prisma/scripts/post-install.mts",

@@ -7,13 +7,14 @@
  * immediately.
  */
 import { execFile } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+
+import { projectRoot } from 'yaml-loader';
 
 const execFileAsync = promisify(execFile);
 
 /** Root of the project: `docker compose` must read the compose file the npm scripts refer to. */
-const PROJECT_ROOT = fileURLToPath(new URL('..', import.meta.url));
+const PROJECT_ROOT = projectRoot(import.meta.dirname);
 const SERVICE = 'db';
 const DEFAULT_TIMEOUT_SECONDS = 60;
 const POLL_INTERVAL_MS = 2000;

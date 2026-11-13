@@ -9,10 +9,11 @@
  * The scope is the one of the audit these specs replace (`.opencode/review/audit-structure.py`).
  */
 import { readdirSync } from 'node:fs';
-import { join, relative, resolve, sep } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
-/** Absolute path of the project root, found from this module rather than from the working directory. */
-export const PROJECT_ROOT = resolve(__dirname, '..', '..', '..', '..');
+// The root is re-exported so the specs of `structure/` and `model-descriptions.spec.ts` keep asking
+// the scope for it instead of importing `tests/unit/support/project-root` themselves.
+export { PROJECT_ROOT } from '../../support/project-root';
 
 /**
  * Directory prefixes that are not hand-written modules: the generated artifacts, the build output

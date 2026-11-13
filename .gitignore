@@ -11,8 +11,6 @@ coverage/
 .rollup.cache/
 # Кэш сборки Angular-клиента (client/.angular)
 .angular/
-# Артефакт `npm run build:lib` (tsc -p packages/yaml-loader/tsconfig.json): в репозиторий не коммитится
-packages/yaml-loader/lib/
 
 # Логи
 logs/

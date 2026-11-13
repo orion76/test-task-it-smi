@@ -8,12 +8,14 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache openssl curl
-# Корневой `postinstall` — файл, а не инлайн-строка, поэтому его нужно положить в образ до `npm ci`.
-# Каталога `prisma/` на этой стадии ещё нет: `COPY` файла создаёт его сам.
+# Корневой `postinstall` — файл, а не инлайн-строка, поэтому его нужно положить в образ до `npm ci`
+# вместе с модулем констант, который он импортирует. Каталога `prisma/` на этой стадии ещё нет:
+# `COPY` файлов создаёт его сам.
 COPY package.json package-lock.json ./
-COPY prisma/scripts/post-install.mts ./prisma/scripts/
+COPY prisma/scripts/post-install.mts prisma/scripts/constants.mts ./prisma/scripts/
 # `yaml-loader` — зависимость вида `file:./packages/yaml-loader`: `npm ci` читает манифест
-# пакета, поэтому каталог нужен уже на стадии зависимостей; `lib/` соберёт стадия `build`.
+# пакета, а корневой `postinstall` берёт корень проекта из `projectRoot` собранного пакета, поэтому
+# `lib/` (артефакт `tsc`, лежащий в репозитории) нужен уже на стадии зависимостей.
 COPY packages/yaml-loader ./packages/yaml-loader
 RUN npm ci
 
@@ -50,13 +52,13 @@ ENV NODE_ENV=production
 # Только production-зависимости: devDependencies в образ не попадают.
 # Prisma CLI лежит в `dependencies` осознанно: контейнер сам применяет миграции
 # (`prisma migrate deploy` в docker/entrypoint.sh), поэтому CLI нужен в runtime.
-# `postinstall` ссылается на файл, поэтому он копируется до `npm ci`; каталог `prisma/`
+# `postinstall` ссылается на файлы, поэтому они копируются до `npm ci`; каталог `prisma/`
 # целиком придёт из стадии сборки ниже.
 COPY package.json package-lock.json ./
-COPY prisma/scripts/post-install.mts ./prisma/scripts/
+COPY prisma/scripts/post-install.mts prisma/scripts/constants.mts ./prisma/scripts/
 # `yaml-loader` подключён как `file:./packages/yaml-loader`: npm разворачивает такую
-# зависимость в символическую ссылку, поэтому каталог пакета с собранным на стадии сборки `lib/`
-# должен лежать в образе до `npm ci --omit=dev`.
+# зависимость в символическую ссылку, поэтому каталог пакета должен лежать в образе до
+# `npm ci --omit=dev`; `lib/` в нём — артефакт, пересобранный на стадии `build`.
 COPY --from=build /app/packages/yaml-loader ./packages/yaml-loader
 RUN npm ci --omit=dev && npm cache clean --force
 

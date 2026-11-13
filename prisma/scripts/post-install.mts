@@ -8,13 +8,12 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-/** Project root, resolved from this file so the hook does not depend on the working directory. */
-const PROJECT_ROOT = join(import.meta.dirname, '..', '..');
-const GENERATED_DIRECTORY = join(PROJECT_ROOT, 'src', 'generated', 'graphql', 'entities');
-const CLEANUP_SCRIPT = join(PROJECT_ROOT, 'prisma', 'scripts', 'post-generate.mts');
+import { OUTPUT_DIRECTORY } from './constants.mts';
 
-if (!existsSync(GENERATED_DIRECTORY)) {
-  console.log(`prisma-nestjs-graphql: ${GENERATED_DIRECTORY} does not exist, nothing to clean`);
+const CLEANUP_SCRIPT = join(import.meta.dirname, 'post-generate.mts');
+
+if (!existsSync(OUTPUT_DIRECTORY)) {
+  console.log(`prisma-nestjs-graphql: ${OUTPUT_DIRECTORY} does not exist, nothing to clean`);
   process.exit(0);
 }
 

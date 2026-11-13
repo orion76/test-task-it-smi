@@ -9,13 +9,14 @@ import { execFile } from 'node:child_process';
 import { accessSync, constants } from 'node:fs';
 import { connect } from 'node:net';
 import { delimiter, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+
+import { projectRoot } from 'yaml-loader';
 
 const execFileAsync = promisify(execFile);
 
 /** Root of the project: `docker compose` must read the compose file the npm scripts refer to. */
-const PROJECT_ROOT = fileURLToPath(new URL('..', import.meta.url));
+const PROJECT_ROOT = projectRoot(import.meta.dirname);
 const DB_FLAG = '--db';
 const DB_SERVICE = 'db';
 const LOCAL_HOST = '127.0.0.1';

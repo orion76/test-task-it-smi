@@ -7,10 +7,11 @@
  */
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+
+import { projectRoot } from 'yaml-loader';
 
 /** Root of the project: the guard looks for the `.env` next to `package.json`, not in the caller. */
-const PROJECT_ROOT = fileURLToPath(new URL('..', import.meta.url));
+const PROJECT_ROOT = projectRoot(import.meta.dirname);
 const ENV_FILE = '.env';
 const EXAMPLE_FILE = '.env.example';
 

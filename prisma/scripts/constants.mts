@@ -4,14 +4,20 @@
  */
 import { join } from 'node:path';
 
+import { projectRoot } from 'yaml-loader';
+
 /** Single-line named import, the only shape the generator emits. */
 export const NAMED_IMPORT = /^import (type )?\{([^}]+)\} from ('[^']+');$/gm;
 
-/** Project root, resolved from this file so the script does not depend on the working directory. */
+/**
+ * Project root, found by `projectRoot` from this file: the walk up to the nearest `package.json`
+ * does not depend on the working directory and survives a move of the scripts.
+ */
+export const PROJECT_ROOT = projectRoot(import.meta.dirname);
+
+/** Output of the GraphQL generators: the entity declarations this pipeline post-processes. */
 export const OUTPUT_DIRECTORY = join(
-  import.meta.dirname,
-  '..',
-  '..',
+  PROJECT_ROOT,
   'src',
   'generated',
   'graphql',
