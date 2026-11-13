@@ -14,6 +14,9 @@ export const SCHEMA_FILE = 'config/profile-data.schema.yml';
  */
 export const DICTIONARIES_FILE = 'config/dictionaries.yml';
 
+/** Format version the dictionaries artifact declares; any other value is a hard error. */
+export const DICTIONARIES_VERSION = 1;
+
 /** Human-readable names of JSON Schema types, used in the violation messages. */
 export const TYPE_NAMES: Record<string, string> = {
   array: 'an array',

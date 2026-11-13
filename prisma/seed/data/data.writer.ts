@@ -342,9 +342,14 @@ export class DataWriter implements IDataWriter {
 
     for (const [index, key] of keys.entries()) {
       const itemPlace = `${place}[${index}]`;
-      const targetId = this.resolveDictionary(dictionary, key, itemPlace);
 
-      await this.insertLink(transaction, dictionary, parent, targetId, itemPlace);
+      try {
+        const targetId = this.resolveDictionary(dictionary, key);
+
+        await this.insertLink(transaction, dictionary, parent, targetId);
+      } catch (error) {
+        throw withContext(itemPlace, error);
+      }
     }
   }
 
@@ -436,20 +441,13 @@ export class DataWriter implements IDataWriter {
    *
    * @throws SeedError when the value the element names has no row, so the tie would point at nothing
    */
-  private resolveDictionary(
-    dictionary: IDictionarySpec,
-    key: string,
-    place: string,
-  ): unknown {
+  private resolveDictionary(dictionary: IDictionarySpec, key: string): unknown {
     const id = this.dictionaryIds.get(dictionary.model)?.get(key);
 
     if (id === undefined) {
-      throw withContext(
-        place,
-        new SeedError(
-          `no ${dictionary.model} row for ${dictionary.key} "${key}" — the value the element ` +
-            'names was not inserted',
-        ),
+      throw new SeedError(
+        `no ${dictionary.model} row for ${dictionary.key} "${key}" — the value the element ` +
+          'names was not inserted',
       );
     }
 
@@ -462,17 +460,12 @@ export class DataWriter implements IDataWriter {
     dictionary: IDictionarySpec,
     parent: IParentRef,
     targetId: unknown,
-    place: string,
   ): Promise<void> {
     const row: TRow = { [dictionary.link.parent]: parent.id, [dictionary.link.target]: targetId };
 
-    try {
-      await this.delegateNamed(transaction, dictionary.link.model).create({ data: row });
+    await this.delegateNamed(transaction, dictionary.link.model).create({ data: row });
 
-      this.count(dictionary.link.model, 1);
-    } catch (error) {
-      throw withContext(place, error);
-    }
+    this.count(dictionary.link.model, 1);
   }
 
   /** Remembers the id of a dictionary row, so the next parent that names the value reuses it. */

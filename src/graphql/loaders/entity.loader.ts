@@ -152,7 +152,8 @@ export class EntityLoader implements IEntityLoader {
   }
 
   /**
-   * Ties of the parents, then the rows the ties name: two queries for the whole group.
+   * Ties of the parents, then the rows the ties name: two queries for the whole group, one when the
+   * ties name no target at all.
    *
    * The rows of the collection are read by the order of the contract, so the subsequence of one parent
    * is already sorted and the grouping keeps it as is.
@@ -162,10 +163,21 @@ export class EntityLoader implements IEntityLoader {
       parentIds: group.ids,
       parentProperty: group.through.parent,
     });
-    const targetIds = links
-      .map((link) => columnOf(link, group.through.target))
-      .filter((id): id is string => typeof id === 'string');
-    const rows = await this.query.find(group.entity, { ids: [...new Set(targetIds)] });
+    const targetIds = [
+      ...new Set(
+        links
+          .map((link) => columnOf(link, group.through.target))
+          .filter((id): id is string => typeof id === 'string'),
+      ),
+    ];
+
+    // A second read without identifiers would ask the database for nothing; the grouping is empty
+    // either way, and DataLoader turns a missing parent into an empty list.
+    if (targetIds.length === 0) {
+      return new Map<string, IEntity[]>();
+    }
+
+    const rows = await this.query.find(group.entity, { ids: targetIds });
 
     return groupRowsByLink(rows, links, group.through);
   }

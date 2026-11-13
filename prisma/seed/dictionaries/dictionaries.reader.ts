@@ -1,5 +1,6 @@
 import { loadConfig } from 'yaml-loader';
 
+import { DICTIONARIES_VERSION } from '../shared/constants';
 import { toDisplayPath } from '../shared/path';
 import { isRecord } from '../shared/record';
 import { SeedError } from '../shared/seed.error';
@@ -17,6 +18,9 @@ import type { IDictionarySpec } from './types';
 export function readDictionaries(filePath: string): IDictionarySpec[] {
   const displayPath = toDisplayPath(filePath);
   const document = loadConfig<unknown>(filePath, { searchFrom: __dirname });
+
+  assertVersion(displayPath, document);
+
   const block = isRecord(document) ? document.dictionaries : undefined;
 
   if (!isRecord(block)) {
@@ -26,6 +30,27 @@ export function readDictionaries(filePath: string): IDictionarySpec[] {
   }
 
   return Object.entries(block).map(([model, entry]) => dictionaryOf(displayPath, model, entry));
+}
+
+/**
+ * Format version of the artifact, checked before the `dictionaries` block: a document of another
+ * format may name the models and the tie tables differently, so it is a hard error, not a silent
+ * parse.
+ *
+ * @param displayPath path of the artifact, for the message
+ * @param document artifact as the YAML parser returned it
+ * @throws SeedError naming the file, the expected version and the value the file declares
+ */
+function assertVersion(displayPath: string, document: unknown): void {
+  const version = isRecord(document) ? document.version : undefined;
+
+  if (version !== DICTIONARIES_VERSION) {
+    const actual = version === undefined ? 'none' : JSON.stringify(version);
+
+    throw new SeedError(
+      `${displayPath}: "version" must be equal to ${DICTIONARIES_VERSION}, got ${actual}`,
+    );
+  }
 }
 
 /**
