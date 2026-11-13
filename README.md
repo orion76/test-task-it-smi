@@ -142,6 +142,11 @@ GraphQL с Apollo Sandbox на `/graphql` и healthcheck на `/health`.
   таблица связи (`through`), `order` — порядок коллекций.
 - Инверсия по умолчанию: чего нет в файле, того нет в API. Генератор помечает прочие поля
   `@HideField()`, поэтому новая колонка не появляется у клиента без решения о ней.
+- Описание модели задаётся здесь, в `models.<Model>.description`, и `///`-комментарий модели в
+  `prisma/schema.prisma` повторяет его дословно: описание GraphQL-типа генератор берёт только из
+  DMMF, то есть из этого комментария. Равенство текстов держит
+  `tests/unit/graphql/contract/model-descriptions.spec.ts` — правка одного файла без другого
+  падает на `npm test`. Тексты описаний для клиента (справка Apollo Sandbox) русские.
 - Проверка выполняется дважды: на сборке (`npm run validate:api-fields`) и на старте в
   `src/main.ts` — конфиг копируется в образ отдельно от кода, и битый файл должен ронять запуск.
 
@@ -169,7 +174,7 @@ order:
 Сгенерированный резолвер — объявление без поведения:
 
 ```ts
-@Query(() => Profile, { description: 'The business-card profile.' })
+@Query(() => Profile, { description: 'Визитка владельца' })
 profile(): Promise<IEntity> {
   return this.findOne('profile');
 }
@@ -316,7 +321,8 @@ profile(): Promise<IEntity> {
    коммитится вместе со схемой.
 3. Генерация: `npm run prisma:generate` обновляет пять артефактов и выполняет пост-обработку.
 4. Контракт: `config/api-fields.yml` — запись в `properties`, `references` или `order`; новая
-   модель получает блок `models.<Model>`.
+   модель получает блок `models.<Model>` с `description`, и тот же текст дословно повторяется в
+   `///` перед моделью в `prisma/schema.prisma`.
 5. Проверка: `npm run validate:api-fields` ловит опечатку в имени модели, поля, сущности или
    колонки и называет путь внутри файла.
 6. Паритет: `npm test` перегенерирует артефакты в одноразовой копии и сравнивает с закоммиченными
@@ -373,7 +379,8 @@ profile(): Promise<IEntity> {
    `@@index([profileId])` и `onDelete: Cascade` в обе стороны.
 3. `npm run prisma:migrate:dev`, затем коммит миграции.
 4. `config/api-fields.yml` — блок `models.<Model>`: `description`, `properties`, `references`
-   (для справочника — `through` с таблицей связи и её колонками), `order`.
+   (для справочника — `through` с таблицей связи и её колонками), `order`. `description` — это и
+   есть описание модели; `///` перед моделью в `prisma/schema.prisma` повторяет его дословно.
 5. `prisma/generators/seed-schema/seed-schema.config.mts` — для справочника блок
    `dictionaries.<Model>`: `key`, `property` (имя поля в `data/profile.yml`), `link` с моделью
    связи и колонками родителя и цели; неизвестная модель или колонка — ошибка генерации.

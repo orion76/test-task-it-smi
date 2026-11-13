@@ -8,8 +8,8 @@ import type { UHealthStatus } from './types';
  *
  * No interface: it would repeat the `@Field` decorators, and the SDL already declares the shape.
  */
-@ObjectType({ description: 'Application health status.' })
+@ObjectType({ description: 'Состояние работоспособности приложения.' })
 export class Health {
-  @Field(() => String)
+  @Field(() => String, { description: 'Состояние приложения; ok — приложение работает.' })
   status!: UHealthStatus;
 }

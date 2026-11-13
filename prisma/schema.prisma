@@ -67,11 +67,11 @@ datasource db {
 // - `@default` is mandatory: the seed builds rows from the JSON Schema `data/profile.yml`, which
 //   knows nothing about this column, so the database has to fill it.
 
-/// Business-card owner with nested collections.
+/// Владелец визитки
 model Profile {
   id          String   @id @default(uuid())
   type        String   @default("profile")
-  /// Latin kebab-case identifier of the profile.
+  /// Идентификатор визитки латиницей в kebab-case.
   slug        String   @unique
   name        String
   description String
@@ -86,6 +86,7 @@ model Profile {
   profileSocialLinks ProfileSocialLink[]
 }
 
+/// Тип ссылки — GITHUB, LINKEDIN, WEBSITE или OTHER
 enum SocialKind {
   GITHUB
   LINKEDIN
@@ -93,13 +94,13 @@ enum SocialKind {
   OTHER
 }
 
-/// External link of the profile owner. A dictionary row shared by the profiles that list it.
+/// Внешняя ссылка — строка справочника, общая для профилей, которые её указывают
 model SocialLink {
   id                 String              @id @default(uuid())
   type               String              @default("socialLink")
   label              String
   url                String              @unique
-  /// Kind of the link: one of the `SocialKind` values.
+  /// Тип ссылки — одно из значений `SocialKind`.
   kind               SocialKind
   profileSocialLinks ProfileSocialLink[]
 
@@ -108,12 +109,12 @@ model SocialLink {
   @@index([kind, label])
 }
 
-/// Skill of the profile owner. A dictionary row shared by the profiles that list it.
+/// Навык — строка справочника, общая для профилей, которые его указывают
 model Skill {
   id            String         @id @default(uuid())
   type          String         @default("skill")
   name          String         @unique
-  /// Free-form grouping: "language", "backend", "database", …
+  /// Свободная группировка: «language», «backend», «database», …
   category      String?
   profileSkills ProfileSkill[]
 
@@ -151,21 +152,21 @@ model ProfileSocialLink {
   @@index([profileId])
 }
 
-/// Employment record of the profile owner.
+/// Место работы владельца визитки
 model Experience {
   id           String    @id @default(uuid())
   type         String    @default("experience")
   profileId    String
   company      String
   position     String
-  /// Calendar date `YYYY-MM-DD`. A period of employment has neither a time of day nor a time zone.
+  /// Календарная дата в формате `YYYY-MM-DD`. У периода работы нет ни времени суток, ни часового пояса.
   startedAt    DateTime
-  /// Calendar date `YYYY-MM-DD`, or `null` while the job is current. The pair `finished`/`endedAt`
-  /// is checked by the seed when it writes a row; a read validates nothing and returns the row as is.
+  /// Календарная дата в формате `YYYY-MM-DD`, или `null`, пока работа является текущей. Пару
+  /// `finished`/`endedAt` проверяет сидинг при записи строки; чтение ничего не проверяет и возвращает строку как есть.
   endedAt      DateTime?
-  /// Whether the employment is over. `false` marks a current job, and then `endedAt` is empty; an
-  /// owner may hold several jobs at once, so this is a fact about the row, not about a missing date.
-  /// `NOT NULL DEFAULT false`, so rows written before the flag existed read as `false`.
+  /// Признак завершённого места работы. `false` — работаю по сей день, и тогда `endedAt` пуст; у владельца
+  /// может быть несколько мест работы одновременно, поэтому это факт о строке, а не о недостающей дате.
+  /// `NOT NULL DEFAULT false`, поэтому строки, записанные до появления признака, читаются как `false`.
   finished     Boolean   @default(false)
   achievements String[]
   profile      Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -177,7 +178,7 @@ model Experience {
   @@index([finished])
 }
 
-/// Project of the profile owner. The link and the description are optional.
+/// Проект владельца визитки
 model Project {
   id          String  @id @default(uuid())
   type        String  @default("project")

@@ -8,6 +8,10 @@
 # Правила:
 #   - модели, поля и запросы перечислены явно: чего нет в файле, того нет в API (инверсия по
 #     умолчанию);
+#   - описание модели задаёт блок `models.<Model>.description`; `///`-комментарий модели в
+#     prisma/schema.prisma повторяет его дословно, а равенство держит тест
+#     tests/unit/graphql/contract/model-descriptions.spec.ts. Тексты описаний — русские: они попадают
+#     в справку GraphQL для клиента;
 #   - `queries` — запросы верхнего уровня: имя запроса становится полем GraphQL, `entity` выбирает
 #     таблицу, `kind` — форму ответа (`one` или `page`);
 #   - `properties` — скалярные поля строки: они попадают в GraphQL-тип как есть, описание становится
@@ -45,11 +49,11 @@ version: 1
 # Поведение обеих форм живёт в `EntityQueries`, поэтому здесь только объявление.
 queries:
   profile:
-    description: The business-card profile.
+    description: Визитка владельца
     entity: profile
     kind: one
   profiles:
-    description: One page of business-card profiles.
+    description: Одна страница списка визиток
     entity: profile
     kind: page
 

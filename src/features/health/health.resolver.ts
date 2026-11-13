@@ -9,7 +9,7 @@ import type { IHealthResolver, IHealthStatus } from './types';
  */
 @Resolver(() => Health)
 export class HealthResolver implements IHealthResolver {
-  @Query(() => Health, { description: 'Application health status.' })
+  @Query(() => Health, { description: 'Состояние работоспособности приложения.' })
   health(): IHealthStatus {
     return { status: 'ok' };
   }
