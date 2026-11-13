@@ -9,7 +9,7 @@ import {
 import { toErrorMessage } from '../../api/error.message';
 import { parseCustomRequest, parsePageParams } from '../../api/request.parser';
 import type { IOperationRequest, UOperationName } from '../../types';
-import type { IOperationPanel, IPreset } from '../types';
+import type { IPreset } from '../types';
 import { gql } from 'apollo-angular';
 
 const PRESETS: IPreset[] = [
@@ -50,7 +50,7 @@ const PRESETS: IPreset[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: 'operation-panel.html',
 })
-export class OperationPanel implements IOperationPanel {
+export class OperationPanel {
   readonly busy = input.required<boolean>();
   readonly run = output<IOperationRequest>();
   readonly reject = output<string>();

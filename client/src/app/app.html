@@ -1,0 +1,31 @@
+<main class="page">
+  <header class="page__header">
+    <h1>Ручная проверка GraphQL API</h1>
+    <app-endpoint-badge />
+  </header>
+  <div class="page__body">
+    <section class="content">
+      @let activeTab=tabActive();
+      <section class="panel--tabs">
+        <button type="button" class="tab" [class.tab--active]="activeTab === 'result'"
+          (click)="tabActive.set('result')">
+          Результат
+        </button>
+        <button type="button" class="tab" [class.tab--active]="activeTab === 'help'" (click)="tabActive.set('help')">
+          Справка
+        </button>
+      </section>
+
+
+      @if(activeTab==='help'){
+      <app-api-panel />
+      }@else{
+      <app-result-panel [state]="state()" />
+      <app-profile-view [profiles]="profiles()" />
+      }
+    </section>
+    <section class="side-right">
+      <app-operation-panel [busy]="busy()" (run)="run($event)" (reject)="reject($event)" />
+    </section>
+  </div>
+</main>

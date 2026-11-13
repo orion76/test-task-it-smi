@@ -80,29 +80,3 @@ export interface IProfileCard {
 export interface IEndpointBadge {
   readonly endpoint: string;
 }
-
-/** Contract of the result panel: the state it shows and the values its template derives from it. */
-export interface IResultPanel {
-  readonly state: InputSignal<IOperationState>;
-  readonly statusLabel: Signal<string>;
-  readonly result: Signal<IOperationResult | null>;
-}
-
-/**
- * Contract of the operation panel: the inputs and outputs the page binds, plus the action its own
- * submit button calls.
- */
-export interface IOperationPanel {
-  readonly busy: InputSignal<boolean>;
-  readonly run: OutputEmitterRef<IOperationRequest>;
-  readonly reject: OutputEmitterRef<string>;
-  readonly hint: Signal<string>;
-  submit(): void;
-}
-
-/** Contract of the view: the profiles it renders and the grouping it computes from them. */
-export interface IProfileView {
-  readonly profiles: InputSignal<IProfileDetails[]>;
-  readonly cards: Signal<IProfileCard[]>;
-  formatPeriod(item: IProfileExperience): string;
-}

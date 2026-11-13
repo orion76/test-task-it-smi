@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { formatDate, groupSkills } from './profile.mapper';
-import type { IProfileCard, IProfileDetails, IProfileExperience, IProfileView } from '../types';
+import type { IProfileCard, IProfileDetails, IProfileExperience } from '../types';
 
 /**
  * Readable view of the profile: it renders only when the response holds a profile and it does not
@@ -11,7 +11,7 @@ import type { IProfileCard, IProfileDetails, IProfileExperience, IProfileView } 
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: 'profile-view.html',
 })
-export class ProfileView implements IProfileView {
+export class ProfileView {
   readonly profiles = input.required<IProfileDetails[]>();
 
   readonly cards = computed<IProfileCard[]>(() =>

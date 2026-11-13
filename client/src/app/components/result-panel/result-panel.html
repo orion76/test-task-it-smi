@@ -1,51 +1,50 @@
+<section class="panel">
+  <h2 class="panel__title">
+    <span>Ответ</span>
+    <span [class]="'status status--' + state().status">{{ statusLabel() }}</span>
+    @if (result(); as result) {
+    <span class="duration">{{ result.durationMs.toFixed(1) }} мс</span>
+    }
+  </h2>
 
-    <section class="panel">
-      <h2 class="panel__title">
-        <span>Ответ</span>
-        <span [class]="'status status--' + state().status">{{ statusLabel() }}</span>
-        @if (result(); as result) {
-          <span class="duration">{{ result.durationMs.toFixed(1) }} мс</span>
+  @if (state().failure; as failure) {
+  <p class="failure">Запрос не отправлен: {{ failure }}</p>
+  }
+
+  @if (state().status === 'idle') {
+  <p class="hint">Выберите операцию и нажмите «Выполнить запрос».</p>
+  }
+
+  @if (state().status === 'loading') {
+  <p class="hint">Запрос ушёл на сервер, ответа пока нет.</p>
+  }
+
+  @if (result(); as result) {
+  <div class="result">
+    @if (result.networkError; as networkError) {
+    <div class="network-error">
+      <h3>Ошибка сети</h3>
+      <pre>{{ networkError }}</pre>
+    </div>
+    }
+
+    @if (result.errors.length > 0) {
+    <div class="graphql-errors">
+      <h3>Ошибки GraphQL</h3>
+      <ul>
+        @for (error of result.errors; track $index) {
+        <li>
+          <span>{{ error.message }}</span>
+          @if (error.path !== '') {
+          <code class="path">{{ error.path }}</code>
+          }
+        </li>
         }
-      </h2>
+      </ul>
+    </div>
+    }
 
-      @if (state().failure; as failure) {
-        <p class="failure">Запрос не отправлен: {{ failure }}</p>
-      }
-
-      @if (state().status === 'idle') {
-        <p class="hint">Выберите операцию и нажмите «Выполнить запрос».</p>
-      }
-
-      @if (state().status === 'loading') {
-        <p class="hint">Запрос ушёл на сервер, ответа пока нет.</p>
-      }
-
-      @if (result(); as result) {
-        <div class="result">
-          @if (result.networkError; as networkError) {
-            <div class="network-error">
-              <h3>Ошибка сети</h3>
-              <pre>{{ networkError }}</pre>
-            </div>
-          }
-
-          @if (result.errors.length > 0) {
-            <div class="graphql-errors">
-              <h3>Ошибки GraphQL</h3>
-              <ul>
-                @for (error of result.errors; track $index) {
-                  <li>
-                    <span>{{ error.message }}</span>
-                    @if (error.path !== '') {
-                      <code class="path">{{ error.path }}</code>
-                    }
-                  </li>
-                }
-              </ul>
-            </div>
-          }
-
-          <pre class="json">{{ result.data | json }}</pre>
-        </div>
-      }
-    </section>
+    <pre class="json">{{ result.data | json }}</pre>
+  </div>
+  }
+</section>

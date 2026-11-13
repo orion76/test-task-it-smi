@@ -1,7 +1,7 @@
 import { JsonPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import type { IOperationResult, IOperationState, UOperationStatus } from '../../types';
-import type { IResultPanel } from '../types';
+
 
 
 /** Label of every status, shown next to the heading of the result panel. */
@@ -11,6 +11,8 @@ const STATUS_LABELS: Record<UOperationStatus, string> = {
   success: 'успех',
   error: 'ошибка',
 };
+
+
 
 
 /**
@@ -24,7 +26,7 @@ const STATUS_LABELS: Record<UOperationStatus, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: 'result-panel.html',
 })
-export class ResultPanel implements IResultPanel {
+export class ResultPanel {
   readonly state = input.required<IOperationState>();
 
   readonly statusLabel = computed(() => STATUS_LABELS[this.state().status]);

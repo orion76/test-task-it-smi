@@ -49,16 +49,16 @@ input {
   font-weight: 600;
 }
 
-.page__body{
+.page__body {
   display: flex;
   gap: 1rem;
 }
 
-.page__body .content{
+.page__body .content {
   flex: 2;
 }
 
-.page__body .side-right{
+.page__body .side-right {
   flex: 1;
 }
 
@@ -87,16 +87,48 @@ input {
   font-size: 16px;
   font-weight: 600;
 }
-.panel__header{
+
+.panel__header {
   display: flex;
   gap: 1rem;
-  justify-content:space-between;
+  justify-content: space-between;
 }
+
 .presets {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 1rem;;
+  margin-top: 1rem;
+}
+
+button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.panel--tabs {
+  padding: 0 1rem;
+  display: flex;
+}
+
+button.tab {
+  border-bottom-left-radius: 0%;
+  border-bottom-right-radius: 0%;
+}
+
+button.primary,
+button.tab {
+  background: #f8f9fb;
+  color: #1b1f24;
+}
+
+button.secondary,
+button.tab--active {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #ffffff;
 }
 
 .preset {
@@ -119,6 +151,22 @@ input {
   font-weight: 600;
 }
 
+.run {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.run:disabled {
+  border-color: var(--border);
+  background: var(--border);
+  cursor: progress;
+}
+
 .hint {
   margin: 8px 0 0;
   color: var(--muted);
@@ -130,7 +178,7 @@ input {
 }
 
 
-.page-params .form-fields{
+.page-params .form-fields {
   display: flex;
   gap: 1rem;
 }
@@ -147,7 +195,7 @@ input {
   margin-top: 12px;
 }
 
-.field--number{
+.field--number {
   max-width: 5rem;
 }
 
@@ -171,21 +219,6 @@ input {
   color: var(--muted);
 }
 
-.run {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #ffffff;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.run:disabled {
-  border-color: var(--border);
-  background: var(--border);
-  cursor: progress;
-}
 
 .status {
   border-radius: 999px;
@@ -318,7 +351,7 @@ input {
   padding-left: 18px;
 }
 
-.profile__list > li {
+.profile__list>li {
   margin-bottom: 6px;
 }
 
@@ -357,4 +390,23 @@ input {
   display: block;
   color: var(--accent);
   word-break: break-all;
+}
+
+
+.json-wrapper {
+  max-width: 80vw;
+  max-height: 80vh;
+  /* Высота окна, после которой появится вертикальный скролл */
+  overflow: auto;
+  /* Включает оба скролла, если контент не влезает */
+  border: 1px solid #ddd;
+  padding: 12px;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+/* Разрешаем перенос длинных текстовых значений внутри дерева */
+:host ::ng-deep ngx-json-viewer .segment .segment-main .segment-value {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
 }

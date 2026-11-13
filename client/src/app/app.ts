@@ -9,7 +9,8 @@ import { ResultPanel } from './components/result-panel/result-panel';
 import { INITIAL_STATE } from './constants';
 import { toStatus } from './operation.status';
 import type { IApp, IOperationRequest, IOperationState } from './types';
-
+import { ApiPanel } from './components/api-panel/api-panel';
+type UTabs = 'result' | 'help'
 /**
  * The page owns the state of the current run: the panel only builds a request, the runner returns a
  * single result, and both the JSON block and the readable profile render from that result. A failed
@@ -17,29 +18,13 @@ import type { IApp, IOperationRequest, IOperationState } from './types';
  */
 @Component({
   selector: 'app-root',
-  imports: [EndpointBadge, OperationPanel, ResultPanel, ProfileView],
+  imports: [EndpointBadge, OperationPanel, ResultPanel, ProfileView, ApiPanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <main class="page">
-      <header class="page__header">
-        <h1>Ручная проверка GraphQL API</h1>
-        <app-endpoint-badge />
-      </header>
-      <div class="page__body">
-        <section class="content">
-          <app-result-panel [state]="state()" />
-        <app-profile-view [profiles]="profiles()" />
-        </section>
-        <section class="side-right">
-          <app-operation-panel [busy]="busy()" (run)="run($event)" (reject)="reject($event)" />
-        </section>
-      </div>
-    </main>
-  `,
+  templateUrl: 'app.html',
 })
 export class App implements IApp {
   private readonly apollo = inject(Apollo);
-
+  readonly tabActive = signal<UTabs>('result')
   readonly state = signal<IOperationState>(INITIAL_STATE);
   readonly busy = computed(() => this.state().status === 'loading');
   readonly profiles = computed(() => {
