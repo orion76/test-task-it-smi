@@ -27,13 +27,13 @@
 ## Что приложение может
 
 В общем, штука получилась полезная. 
-Добавлю авторизацию, разграничение прав доступа к сущностям и полям, возможно админку на Angular
+Добавлю потом авторизацию, разграничение прав доступа к сущностям и полям, возможно админку на Angular + ИИ-модель
 и можно использовать, как "быстро-бэкэнд" для небольших мобильных и web  проектов-)
 
 Структура Базы Данных задается в конфигурационном файле 'prisma/schema.prisma'.
 Он является единственным "источником истиниы", все остальные конфигурационные файлы для подсистем приложения генерируются на его базе.
 
-Структура публичного API задается в 
+Структура публичного API задается в 'config/api-fields.yml'
 
 ## Демо
 
@@ -42,23 +42,12 @@ GraphQL с Apollo Sandbox на `/graphql` и healthcheck на `/health`.
 
 ## Содержание
 
-- [Источники истины](#источники-истины)
 - [Каталоги](#каталоги)
 - [Подсистемы](#подсистемы)
 - [Как части работают вместе](#как-части-работают-вместе)
 - [Типовые доработки](#типовые-доработки)
 - [Команды](#команды)
 
-## Источники истины
-
-| Источник | Что из него выводится |
-|---|---|
-| `prisma/schema.prisma` | таблицы, колонки, связи, GraphQL-типы,  JSON Schema |
-| `config/api-fields.yml` | публичные запросы, поля, связи, порядок, объявления резолверов |
-| `data/profile.yml` | данные для загрузки в БД |
-| `prisma/generators/seed-schema/seed-schema.config.mts` | справочники, их ключи и таблицы связи; артефакт — `config/dictionaries.yml` |
-| `config/environment.schema.yml` | допустимые переменные окружения и значения по умолчанию |
-| `src/schema.gql` | снимок SDL для проверки; файл пишет тест, а не приложение |
 
 ## Каталоги
 
@@ -104,12 +93,6 @@ GraphQL с Apollo Sandbox на `/graphql` и healthcheck на `/health`.
 - Путь считается от корня проекта (первый каталог с `package.json`), а не от рабочего каталога:
   запуск из репозитория и из `/app` в контейнере работает одинаково. Цена — каждый вызов обязан
   передать `searchFrom`.
-- В `config/` пять YAML, из них три — артефакты генерации: `api-fields.schema.yml`,
-  `profile-data.schema.yml` и `dictionaries.yml`. Окружение проверяется до подключения к базе:
-  обязательна `DATABASE_URL`, `PORT` в диапазоне 1–65535 (по умолчанию 3000), `NODE_ENV` из трёх
-  значений.
-
-Файлы: `config/*.yml`, `src/common/config/`, `packages/yaml-loader/src/`.
 
 ### 2. Модель данных
 
@@ -123,7 +106,6 @@ GraphQL с Apollo Sandbox на `/graphql` и healthcheck на `/health`.
   `ProfileSocialLink` (`@@unique([profileId, skillId])`, `@@unique([profileId, socialLinkId])`).
   `onDelete: Cascade` на обеих сторонах связи делает каскад единственным путём удаления потомков.
 
-Файлы: `prisma/schema.prisma`, `prisma/migrations/`, `src/common/contracts/`.
 
 ### 3. Сидинг
 
@@ -194,8 +176,6 @@ profile(): Promise<IEntity> {
 - Три формы чтения: страница, коллекция по родителям, список идентификаторов. Порядок берётся из
   контракта, запасной — `ID_ORDER` по `id` (защита от неизвестной таблицы, а не правило домена).
 
-Файлы: `src/db/entity.repository.ts`, `src/db/find-args.ts`, `src/common/contracts/`.
-
 ### 7. GraphQL-слой
 
 - Объявления резолверов генерируются, поведение написано: `EntityQueries` даёт 404 на пустой таблице
@@ -207,8 +187,6 @@ profile(): Promise<IEntity> {
 - Схема строится в памяти (`autoSchemaFile: true`), поэтому приложению не нужно писать в образ;
   интроспекция включена, `GET /graphql` отдаёт Apollo Sandbox, штатная страница Nest выключена.
 
-Файлы: `src/graphql/`, `src/generated/graphql/resolvers/`, `src/schema.gql`.
-
 ### 8. Health
 
 - Два входа: HTTP `GET /health` для `HEALTHCHECK` и мониторинга, GraphQL `health { status }` для
@@ -218,7 +196,6 @@ profile(): Promise<IEntity> {
 - Резолвер зарегистрирован в `HealthModule`, а не в `SCHEMA_RESOLVERS`: `graphql` не имеет права
   импортировать feature-модуль, поэтому регистрация остаётся там, где объявлен резолвер.
 
-Файлы: `src/features/health/`, `Dockerfile`.
 
 ### 9. Сборка и Docker
 
@@ -231,8 +208,6 @@ profile(): Promise<IEntity> {
   каждые 10 секунд вызывает `/health`. Prisma CLI лежит в `dependencies`: контейнер сам применяет
   миграции.
 
-Файлы: `Dockerfile`, `docker/entrypoint.sh`, `docker-compose.yml`, `src/main.ts`.
-
 ### 10. Клиент проверки
 
 - Angular-приложение в `client/` — инструмент проверки, а не витрина: отправляет произвольный
@@ -241,8 +216,6 @@ profile(): Promise<IEntity> {
   не нужен. Цена — клиент запускается только через dev-сервер, статикой без прокси не работает.
 - Кэш выключен (`fetchPolicy: 'network-only'`), ошибки возвращаются полями результата, поэтому
   страница не может застрять в загрузке. Ответ показывается как есть, без копии контракта.
-
-Файлы: `client/src/app/`, `client/proxy.conf.json`, `client/proxy.conf.docker.json`.
 
 ### 11. Качество
 
@@ -254,7 +227,6 @@ profile(): Promise<IEntity> {
   размещение типов и запрет `type` с объектным литералом. E2E идёт на живой PostgreSQL и требует
   Docker.
 
-Файлы: `eslint.config.mjs`, `knip.jsonc`, `tests/`, `tsconfig*.json`.
 
 ## Как части работают вместе
 
