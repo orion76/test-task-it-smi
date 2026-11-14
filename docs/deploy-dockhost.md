@@ -30,11 +30,11 @@ GraphQL API, и собранную страницу Angular), рядом Postgre
 | --- | --- | --- | --- |
 | Проект | `my-project` | кластер `ru-1a` | вручную (шаг 1) |
 | Репозиторий (пайплайн) | `app` | `Dockerfile`, контекст `.`, память сборки 1024 MiB | `dockhost.yaml:43-51` |
-| Контейнер | `app` | образ из пайплайна `app`, порт 3000/TCP, память 512 MiB, переменные `DATABASE_URL`, `NODE_ENV`, `PORT` | пайплайн `app` + `container update` (шаг 6) |
-| Контейнер | `postgres` | `postgres:17.11-alpine`, порт 5432/TCP, память 256 MiB | `dockhost.yaml:60-79`, `compose apply` |
-| Том | `db-data` | ssd, 1 GiB, смонтирован в `/var/lib/postgresql/data` | `dockhost.yaml:54-58`, `compose apply` |
-| Домен | `main` | динамический адрес платформы, HTTPS | `dockhost.yaml:83-84`, `compose apply` |
-| Маршрут | `web` | `/` → `app:3000` (единственный маршрут) | `dockhost.yaml:95-100`, `compose apply` |
+| Контейнер | `app` | образ из пайплайна `app`, порт 3000/TCP, память 512 MiB, переменные `DATABASE_URL`, `NODE_ENV`, `PORT` | пайплайн `app` (шаг 4) + `container update` (шаг 5) |
+| Контейнер | `postgres` | `postgres:17.11-alpine`, порт 5432/TCP, память 256 MiB | `dockhost.yaml:60-79`, `compose apply` (шаг 6) |
+| Том | `db-data` | ssd, 1 GiB, смонтирован в `/var/lib/postgresql/data` | `dockhost.yaml:54-58`, `compose apply` (шаг 6) |
+| Домен | `main` | динамический адрес платформы, HTTPS | `dockhost.yaml:83-84`, `compose apply` (шаг 6) |
+| Маршрут | `web` | `/` → `app:3000` (единственный маршрут) | `dockhost.yaml:95-100`, `compose apply` (шаг 6) |
 
 Второго контейнера и второго маршрута нет: статику клиента отдаёт тот же процесс Nest
 (`useStaticAssets`, каталог `public` рядом с `dist` — `src/main.ts:33`), поэтому `/`, `/graphql`
@@ -69,12 +69,14 @@ GraphQL API, и собранную страницу Angular), рядом Postgre
 Все команды выполняются из корня репозитория: `compose apply` без пути берёт `dockhost.yaml` из
 текущего каталога, а `git push` отправляет то дерево, из которого запущен.
 
-**Порядок принципиален.** Контейнер `app` создаёт не секция `containers` файла, а пайплайн из блока
-`repositories` (`dockhost.yaml:21-24`): пока не прошла первая сборка, контейнера `app` не существует
-и `dockhost compose apply` падает с `unknown container app`. Поэтому сначала создаётся проект и
-задаются переменные, затем выкладывается ветка и собирается образ, и только после этого применяется
-`dockhost.yaml`. Шаг «применить файл» до первой сборки — известная ловушка; повторный `apply` после
-сборки проходит без ошибок.
+**Порядок принципиален, и ловушек в нём две.** Контейнер `app` создаёт не секция `containers`
+файла, а пайплайн из блока `repositories` (`dockhost.yaml:21-24`): пока не прошла первая сборка,
+контейнера `app` не существует, и `dockhost compose apply` падает с `unknown container app`. Но и
+сразу после сборки применять файл рано: у нового контейнера ещё нет порта 3000/TCP, которого
+требует сервис `app`, и `compose apply` падает с `unknown container port 3000/TCP`. Поэтому порядок
+такой: проект → переменные проекта → выкладка ветки → сборка образа → переменные, порт и память
+контейнера `app` → `compose apply`. Обе ошибки порядка лечатся выполнением пропущенного шага и
+повтором `apply`.
 
 Каждый шаг ниже содержит цель, команду и ожидаемый результат. Если результат не совпал — не
 переходите к следующему шагу, посмотрите раздел «Типовые ошибки».
@@ -120,7 +122,7 @@ dockhost project create --name my-project
 | `DATABASE_URL` | **да** | строка подключения Prisma | панель или `dockhost environment variable set` |
 
 `POSTGRES_USER` и `POSTGRES_DB` объявлены прямо в `dockhost.yaml` (не секреты), поэтому вручную их не
-набирают: они появляются после `compose apply` (шаг 5). Секреты задаются до первой сборки —
+набирают: они появляются после `compose apply` (шаг 6). Секреты задаются до первой сборки —
 контейнер `app` читает `DATABASE_URL` на старте, и без неё падает с
 `Environment variable not found: DATABASE_URL`.
 
@@ -154,7 +156,7 @@ dockhost environment variable set --name DATABASE_URL \
 задачи и коммиты.
 
 **Ожидаемый результат.** `dockhost environment variable list` показывает `DATABASE_URL` и
-`POSTGRES_PASSWORD`. `POSTGRES_USER` и `POSTGRES_DB` появятся после `compose apply` (шаг 5): их
+`POSTGRES_PASSWORD`. `POSTGRES_USER` и `POSTGRES_DB` появятся после `compose apply` (шаг 6): их
 объявляет сам `dockhost.yaml`, поэтому все четыре переменные видны только с этого момента.
 Значения секретов не попадают в репозиторий, в этот файл и в переписку.
 
@@ -191,29 +193,18 @@ dockhost repository build app
 только `BRANCH` и `LAST BUILD` (метка времени), отдельной команды списка сборок в 0.23.1 нет. Итог
 сборки виден в панели, в разделе «Сборки» репозитория `app`.
 
-### Шаг 5. Применить `dockhost.yaml`
+У нового контейнера ещё нет ни переменных, ни порта: и то и другое задаёт следующий шаг, а до него
+`app` может перезапускаться с `Environment variable not found` — это ожидаемо.
 
-**Цель.** Создать по файлу том `db-data`, контейнер `postgres`, домен `main` и маршрут `web`. Файл
-идемпотентен: существующие ресурсы он обновляет, отсутствующие создаёт.
-
-```bash
-dockhost compose apply
-```
-
-Путь и флаги необязательны: `-f/--file` по умолчанию указывает на `dockhost.yaml` в текущем
-каталоге.
-
-**Ожидаемый результат.** Команда проходит без ошибок; `dockhost volume list` показывает `db-data`,
-`dockhost container list` — `postgres` и `app`, `dockhost network domain list` — домен `main`.
-
-Если контейнера `app` ещё нет (шаг 4 не выполнен), команда завершится ошибкой `unknown container app`
-и создаст только том и `postgres`. Это не поломка: выполните шаг 4, затем повторите `compose apply`.
-
-### Шаг 6. Переменные, порт и память контейнера `app`
+### Шаг 5. Переменные, порт и память контейнера `app`
 
 **Цель.** Задать контейнеру `app` рантайм-переменные, порт и память. Это единственное, чего нет в
-`dockhost.yaml`: контейнер `app` создаёт пайплайн, а его параметры живут в панели. До этого шага
-`app` может перезапускаться с `Environment variable not found` — это ожидаемо и лечится здесь.
+`dockhost.yaml`: контейнер `app` создаёт пайплайн, а его параметры живут в панели.
+
+**Шаг идёт до `compose apply`** (шаг 6), а не после: сервис `app` в `dockhost.yaml` требует порт
+3000/TCP, а у только что собранного контейнера порта нет — его добавляет именно `container update`.
+Если применить файл раньше, `compose apply` упадёт на `Failed unknown container port 3000/TCP` и не
+создаст маршрут.
 
 **`dockhost container update` заменяет список переменных и портов целиком, а не дополняет его.**
 Поэтому набор передаётся всегда полностью — и при первой настройке, и при любом последующем
@@ -250,13 +241,54 @@ dockhost container update --name app \
 **Ожидаемый результат.** В `dockhost container list` (или в панели) у контейнера `app` три
 переменные — `DATABASE_URL`, `NODE_ENV`, `PORT` — порт 3000/TCP и память 512 MiB. Контейнер
 перезапускается; `dockhost container logs app --tail 50` показывает старт без
-`Environment variable not found`.
+`Environment variable not found`. Базы на этот момент ещё нет, поэтому следом в логах может быть
+`P1001` — это лечится на шаге 6.
+
+### Шаг 6. Применить `dockhost.yaml`
+
+**Цель.** Создать по файлу том `db-data`, контейнер `postgres`, домен `main` и маршрут `web`. Файл
+идемпотентен: существующие ресурсы он обновляет, отсутствующие создаёт.
+
+```bash
+dockhost compose apply
+```
+
+Путь и флаги необязательны: `-f/--file` по умолчанию указывает на `dockhost.yaml` в текущем
+каталоге.
+
+**Ожидаемый результат.** `dockhost volume list` показывает `db-data`, `dockhost container list` —
+`postgres` и `app`, `dockhost network domain list` — домен `main`, `dockhost network route list` —
+маршрут `/` → `app:3000`. В выводе `apply` появляется `Create route web`
+(`u6fu-w4sl-fj2p.gw-1a.dockhost.net / -> app:3000`).
+
+**Двух проходов достаточно, и это нормальный ход, а не поломка.** Первый создаёт том `db-data` и
+контейнер `postgres` и может завершиться ошибкой `Failed unknown container port 3000/TCP` (порт у
+`app` не появился — значит, шаг 5 пропущен), второй создаёт маршрут. Созданное первым проходом не
+откатывается: повторный `apply` продолжает с того же места.
+
+Если контейнера `app` ещё нет (шаг 4 не выполнен), команда завершится ошибкой `unknown container app`
+и создаст только том и `postgres`. Это не поломка: выполните шаг 4, затем шаг 5 и повторите
+`compose apply`.
+
+**Первый старт `app` после этого шага может упасть с `P1001: Can't reach database server at
+postgres:5432`** — и это тоже нормально. `postgres` создан тем же проходом и ещё инициализирует
+кластер (около 10 секунд), а `app` стартует сразу и повтора не делает: контейнер остаётся в статусе
+`updating`, ошибка — только в логах. Дождитесь в `dockhost container logs postgres` строки
+`database system is ready to accept connections` и выполните:
+
+```bash
+dockhost container restart app
+```
+
+**Ожидаемый результат после перезапуска.** `dockhost container logs app --tail 50` показывает
+`==> prisma migrate deploy` → `==> seed (dist/prisma/seed/main.js)` с итоговой строкой
+`Seed finished — …` → `Application is running`. Дальше — проверки раздела 4.
 
 ### Шаг 7. Домен и маршрут
 
 **Цель.** Убедиться, что домен и единственный маршрут на месте, и узнать фактический адрес стенда.
 Домен `main`, сервис `app` и маршрут `/` → `app:3000` описаны в `dockhost.yaml:81-100`, поэтому
-обычно их создаёт `compose apply` (шаг 5) — отдельных команд не нужно.
+обычно их создаёт `compose apply` (шаг 6) — отдельных команд не нужно.
 
 ```bash
 dockhost network domain list
@@ -272,6 +304,8 @@ dockhost network route list
 ### Шаг 8. Проверка после развёртывания
 
 **Цель.** Убедиться, что стенд отвечает целиком. Порядок проверок и ожидаемые ответы — раздел 4.
+Если после шага 6 `app` не поднялся, начните с пункта 4 раздела 4: первый старт до готовности базы
+лечится `dockhost container restart app`, а не повторным `compose apply`.
 
 ## 4. Проверка после развёртывания
 
@@ -308,9 +342,21 @@ dockhost network route list
    ```
 
    **Ожидаемо:** по порядку `==> prisma migrate deploy`, затем
-   `==> seed (dist/prisma/seed/main.js)`, затем `Application is running` и строка о прослушивании
-   порта. Ошибок Prisma, `P1001` (база недоступна) и `Environment variable not found` нет.
-   Шаги выполняет `docker/entrypoint.sh:9-22` — ручных команд на стенде нет.
+   `==> seed (dist/prisma/seed/main.js)` с итоговой строкой `Seed finished — …`, затем
+   `Application is running` и строка о прослушивании порта. Ошибок Prisma, `P1001` (база недоступна)
+   и `Environment variable not found` нет. Шаги выполняет `docker/entrypoint.sh:9-22` — ручных команд
+   на стенде нет.
+
+   **Если в логах `P1001: Can't reach database server at postgres:5432`** — это первый старт до
+   готовности базы (шаг 6): `postgres` ещё инициализировал кластер, а `app` повтора не делает.
+   Дождитесь в `dockhost container logs postgres` строки
+   `database system is ready to accept connections` и выполните `dockhost container restart app`.
+   Записи от неудачной попытки остаются в логах: сверяйтесь со временем строк, а не только с их
+   текстом.
+
+   **Данные сверяйте по строке `Seed finished — …` в логах `app`:** у контейнера `postgres` нет
+   внешнего порта, `psql` снаружи недоступен, а `dockhost container exec postgres -- psql ...` в
+   живом прогоне зависал и вывода не возвращал, поэтому на счётчики из него не рассчитывайте.
 
 5. **Запрос из ТЗ через Sandbox.** Вставить в Sandbox запрос (источник — `TZ/TZ.md:36-51`):
 
@@ -369,7 +415,7 @@ dockhost container restart app
 
 После любого из вариантов повторите проверки из раздела 4 (минимум `/health` и логи).
 
-Помните: если меняли переменные контейнера `app`, передавайте **полный** набор (шаг 6) — иначе
+Помните: если меняли переменные контейнера `app`, передавайте **полный** набор (шаг 5) — иначе
 список заменится частичным и `DATABASE_URL` пропадёт.
 
 ### Откат
@@ -397,12 +443,28 @@ dockhost container restart app
   (хост в строке подключения — имя контейнера).
 - **`Environment variable not found: DATABASE_URL` в логах `app`** — переменные контейнера потеряны.
   Причина почти всегда одна: `dockhost container update` вызван с частичным набором и **заменил**
-  список. Повторите шаг 6 с полным набором: `dockhost container update --name app --image <образ>
+  список. Повторите шаг 5 с полным набором: `dockhost container update --name app --image <образ>
   --memory 512MiB --variable 'DATABASE_URL:$DATABASE_URL' --variable 'NODE_ENV:production'
   --variable 'PORT:3000' --port 3000/TCP`.
 - **`unknown container app` при `compose apply`** — контейнера `app` ещё нет: его создаёт пайплайн
   из блока `repositories` только после первой сборки. Сначала `dockhost repository build app`,
-  затем повторите `dockhost compose apply`.
+  затем шаг 5 (переменные и порт), затем повторите `dockhost compose apply`.
+- **`Failed unknown container port 3000/TCP` при `compose apply`** — у контейнера `app` нет порта,
+  которого требует сервис `app` из `dockhost.yaml`: порт добавляет только `container update`,
+  поэтому `apply` запущен раньше шага 5. Задайте порт вместе с полным набором переменных и памятью,
+  затем повторите `compose apply`:
+
+  ```bash
+  dockhost container update --name app --image <образ> --memory 512MiB \
+    --variable 'DATABASE_URL:$DATABASE_URL' --variable 'NODE_ENV:production' \
+    --variable 'PORT:3000' --port 3000/TCP
+  ```
+
+- **`P1001: Can't reach database server at postgres:5432` при первом запуске `app`** — база ещё
+  не готова, а не сломана: `postgres` создан только что, инициализация кластера занимает около
+  10 секунд, а `app` стартует сразу и автоматического повтора не делает (контейнер остаётся
+  в статусе `updating`, ошибка — в логах). Дождитесь в `dockhost container logs postgres` строки
+  `database system is ready to accept connections` и выполните `dockhost container restart app`.
 - **OOM при сборке** (`npm ci`, `nest build`, `ng build` идут в одном образе) — память сборки задаётся
   в `dockhost.yaml` полем `repositories.app.memory` (`dockhost.yaml:51`, сейчас `1024MiB`): у
   `dockhost repository update` опции `--memory` нет. Поднимите значение в файле, выполните
@@ -451,7 +513,7 @@ dockhost container restart app
 - **Нет SPA-fallback.** У клиента нет маршрутизатора, страница одна: неизвестный путь отдаёт 404,
   и это ожидаемо.
 - **Память сборки резервируется и тарифицируется.** 1024 MiB нужны только на время сборки; рантайм
-  работает на 512 MiB (`--memory 512MiB` в шаге 6, фактическое потребление ~216 MiB).
+  работает на 512 MiB (`--memory 512MiB` в шаге 5, фактическое потребление ~216 MiB).
 - **Секреты только в переменных.** Пароль базы и `DATABASE_URL` живут в переменных проекта; в
   репозитории и в этом файле — только имена.
 
